@@ -5,6 +5,8 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.mealplanning.ingredientList.data.Ingredient
 import com.example.mealplanning.ingredientList.data.IngredientDao
 import com.example.mealplanning.recipe.data.Recipe
@@ -29,7 +31,7 @@ import com.example.mealplanning.stock.data.Stock
         Recipe::class,
         RecipeDetail::class
     ],
-    version = 1, // Start with version 1 for the new schema
+    version = 3, // Start with version 1 for the new schema
     exportSchema = false
 )
 @TypeConverters(Converters::class) // This handles the LocalDate conversion
@@ -42,6 +44,17 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun recipeDao(): RecipeDao
 
     companion object {
+
+        val MIGRATION = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 1. Add isUpdateStock to ShoppingCart (Default 0/false)
+                db.execSQL("ALTER TABLE ShoppingCart ADD COLUMN isUpdateStock INTEGER NOT NULL DEFAULT 0")
+
+                // 2. Drop lastUpdatedAmount from MealPlanDetail
+                // This requires SQLite 3.35.0+.
+                db.execSQL("ALTER TABLE MealPlanDetail DROP COLUMN lastUpdatedAmount")
+            }
+        }
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
@@ -56,6 +69,7 @@ abstract class AppDatabase : RoomDatabase() {
                     // This will wipe the database on schema changes.
                     // Replace with proper migrations for production.
                     .fallbackToDestructiveMigration(false)
+                    .addMigrations(MIGRATION)
                     .build()
                 INSTANCE = instance
                 instance

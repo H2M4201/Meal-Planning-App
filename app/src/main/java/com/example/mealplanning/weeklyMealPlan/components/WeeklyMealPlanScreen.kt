@@ -76,7 +76,12 @@ fun WeeklyMealPlanScreen(
                 onLastWeek = { startOfWeek = startOfWeek.minusWeeks(1) },
                 onNextWeek = { startOfWeek = startOfWeek.plusWeeks(1) },
                 onUpdateShoppingList = {
-                    vm.updateShoppingListForWeek(startOfWeek, shoppingListVm)
+                    // Flatten all MealPlanDetail objects from the current week's map
+                    val allDetails = weeklyMealPlans.values.flatten()
+
+                    if (allDetails.isNotEmpty()) {
+                        shoppingListVm.updateShoppingListFromMealPlan(allDetails, startOfWeek)
+                    }
                 }
             )
             MealPlanGrid(
@@ -84,8 +89,14 @@ fun WeeklyMealPlanScreen(
                 weekDates = weekDates,
                 mealPlans = weeklyMealPlans,
                 onCellClick = { uiMeal ->
-                    // Open the Cook dialog for any cell, passing the existing data or empty data
-                    showCookDialog = uiMeal
+                    // MODIFICATION: Check IsEatOut status or if it's a new meal
+                    // If it's already marked as EatOut, or if it's empty, show Choice dialog
+                    if (uiMeal.mealPlan == null || uiMeal.mealPlan.IsEatOut) {
+                        showMealChoiceDialog = uiMeal
+                    } else {
+                        // If it's an existing Cooked meal, show Choice dialog to allow changing to EatOut
+                        showCookDialog = uiMeal
+                    }
                 }
             )
 
@@ -214,4 +225,6 @@ fun TopControls(
             )
         }
     }
+
+
 }

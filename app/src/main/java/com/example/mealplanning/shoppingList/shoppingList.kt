@@ -26,6 +26,7 @@ import com.example.mealplanning.shareUI.components.AppTopBar
 import com.example.mealplanning.shareUI.components.IngredientDialog
 import com.example.mealplanning.shareUI.theme.MealPlanningTheme
 import com.example.mealplanning.shoppingList.ViewModel.ShoppingListViewModel
+import com.example.mealplanning.shoppingList.components.ShoppingItemRow
 import com.example.mealplanning.stock.ViewModel.StockViewModel
 import com.example.mealplanning.stock.data.Stock
 import java.time.DayOfWeek
@@ -46,7 +47,9 @@ fun ShoppingListScreen(
         mutableStateOf(LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.SATURDAY)))
     }
 
-    val currentWeekItems by shoppingListVm.getCartForWeek(currentWeekStart).collectAsState()
+    val currentWeekItems by remember(currentWeekStart) {
+        shoppingListVm.getCartForWeek(currentWeekStart)
+    }.collectAsState(initial = emptyList())
     val masterIngredients by ingredientListVm.masterIngredients.collectAsState()
 
     ShoppingListScreenContent(
@@ -126,14 +129,24 @@ fun ShoppingListScreenContent(
             }
 
             Button(
-                onClick = { onAddItemsToStock(currentWeekItems) },
+                onClick = {
+                    // 1. Filter only items NOT already in stock to avoid double-adding
+                    val itemsToAdd = currentWeekItems.filter { !it.isUpdateStock }
+                    if (itemsToAdd.isNotEmpty()) {
+                        onAddItemsToStock(itemsToAdd)
+
+                        // 2. Mark these specific items as pushed to stock in DB
+                        itemsToAdd.forEach { item ->
+                            onUpdateItem(item.copy(isUpdateStock = true))
+                        }
+                    }
+                },
                 enabled = currentWeekItems.isNotEmpty() && !isBought,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 16.dp)
             ) {
-                Text("Add to Stock")
-            }
+                Text(if (currentWeekItems.all { it.isUpdateStock }) "Items Added to Stock" else "Add to Stock")            }
         }
     }
 
@@ -183,93 +196,4 @@ fun ShoppingListTopControls(
             Icon(Icons.AutoMirrored.Filled.ArrowForward, "Next Week", tint = Color.White)
         }
     }
-}
-
-@Composable
-fun ShoppingItemRow(ingredient: Ingredient, shoppingCart: ShoppingCart, onEdit: () -> Unit, onDelete: () -> Unit, isBought: Boolean) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Surface(
-            modifier = Modifier.weight(1f),
-            shape = MaterialTheme.shapes.medium,
-            color = Color.LightGray
-        ) {
-            Text(
-                text = ingredient.Name,
-                modifier = Modifier.padding(16.dp),
-                color = Color.Black,
-                fontWeight = FontWeight.Bold
-            )
-        }
-        Surface(
-            modifier = Modifier.width(100.dp),
-            shape = MaterialTheme.shapes.medium,
-            color = Color.LightGray
-        ) {
-            Text(
-                text = shoppingCart.Amount.toString(),
-                modifier = Modifier.padding(16.dp),
-                color = Color.Black
-            )
-        }
-
-        IconButton(
-            onClick = onEdit,
-            enabled = !isBought,
-            modifier = Modifier.background(
-                if (isBought) Color.Gray else Color.White,
-                MaterialTheme.shapes.small
-            )
-        ) {
-            Icon(Icons.Default.Edit, contentDescription = "Edit Item", tint = Color.Black)
-        }
-        IconButton(
-            onClick = onDelete,
-            enabled = !isBought,
-            modifier = Modifier.background(
-                if (isBought) Color.DarkGray else Color(0xFFFF5252),
-                MaterialTheme.shapes.small
-            )
-        ) {
-            Icon(Icons.Default.Close, contentDescription = "Delete Item", tint = Color.White)
-        }
-    }
-}
-
-@Composable
-fun ShoppingListScreenPreview() {
-    MealPlanningTheme {
-        // 1. Create fake data for the preview
-        val fakeMasterIngredients = listOf(
-            Ingredient(ID = 1, Name = "Milk", Unit = "ml"),
-            Ingredient(ID = 2, Name = "Bread", Unit = "loaf")
-        )
-        val fakeCartItems = listOf(
-            ShoppingCart(ID = 101, IngredientID = 1, Amount = 1000, week = LocalDate.now()),
-            ShoppingCart(ID = 102, IngredientID = 2, Amount = 1, week = LocalDate.now())
-        )
-
-        // 2. Call the dumb component with the fake data
-        ShoppingListScreenContent(
-            onNavigateUp = {},
-            currentWeekStart = LocalDate.now(),
-            currentWeekItems = fakeCartItems,
-            masterIngredients = fakeMasterIngredients,
-            onWeekChange = {},
-            onUpdateItem = {},
-            onRemoveItem = {},
-            onAddItemsToStock = {},
-            ingredientListVm = IngredientListViewModel(FakeIngredientDaoPreview())
-        )
-    }
-}
-
-// Add a private fake DAO just for this preview file
-private class FakeIngredientDaoPreview : IngredientDao {
-    override suspend fun insert(ingredient: Ingredient) {}
-    override suspend fun delete(ingredient: Ingredient) {}
-    override fun getAllIngredients(): kotlinx.coroutines.flow.Flow<List<Ingredient>> = kotlinx.coroutines.flow.flowOf(emptyList())
 }

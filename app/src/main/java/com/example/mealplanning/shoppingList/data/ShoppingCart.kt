@@ -22,5 +22,6 @@ data class ShoppingCart(
     val ID: Int = 0,
     val IngredientID: Int,
     val Amount: Int,
-    val week: LocalDate // Room can handle LocalDate with the TypeConverter
+    val week: LocalDate,
+    val isUpdateStock: Boolean = false // New column
 )

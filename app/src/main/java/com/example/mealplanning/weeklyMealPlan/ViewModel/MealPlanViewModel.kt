@@ -73,30 +73,23 @@ class MealPlanViewModel(
     ) {
         viewModelScope.launch {
             val endOfWeek = startOfWeek.plusDays(6)
+            // 1. Get all raw meal details for the week
             val mealDetails = mealPlanDao.getIngredientsForWeek(startOfWeek, endOfWeek)
 
-            // MODIFICATION 4: Fetch the real master ingredient list from the DAO
-            val allIngredients = ingredientDao.getAllIngredients().first() // .first() gets the current list from the Flow
-
-            // Now, map the details to real Ingredient objects with the correct name and unit
-            val ingredientsForShoppingList = mealDetails.mapNotNull { detail ->
-                allIngredients.find { it.ID == detail.IngredientID }?.let { masterIngredient ->
-                    // Create a temporary Ingredient object that includes the amount for the shopping list
-                    Ingredient(
-                        ID = masterIngredient.ID,
-                        Name = masterIngredient.Name,
-                        Unit = masterIngredient.Unit,
-                        // The Amount field no longer exists on the main Ingredient entity.
-                        // We need to create a different object or handle this in the ShoppingListViewModel.
-                        // For now, let's create a list of a temporary data class.
+            // 2. Group by IngredientID and sum the Amounts so we don't have duplicates
+            val itemsToCart = mealDetails
+                .groupBy { it.IngredientID }
+                .map { (ingredientId, details) ->
+                    com.example.mealplanning.shoppingList.data.ShoppingCart(
+                        IngredientID = ingredientId,
+                        Amount = details.sumOf { it.Amount },
+                        week = startOfWeek
                     )
                 }
-            }
 
-            // This needs to be adapted to a new data structure if the shopping list needs amounts.
-            // For now, we'll assume the shopping list just needs the ingredient itself.
-            if (ingredientsForShoppingList.isNotEmpty()) {
-                // shoppingListVm.addIngredientsForWeek(startOfWeek, ingredientsForShoppingList)
+            // 3. Send the aggregated ShoppingCart items to the ShoppingListViewModel
+            if (itemsToCart.isNotEmpty()) {
+                shoppingListVm.addItemsToCart(itemsToCart)
             }
         }
     }

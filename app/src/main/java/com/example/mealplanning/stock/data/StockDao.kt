@@ -17,4 +17,7 @@ interface StockDao {
 
     @Query("SELECT * FROM Stock")
     fun getAllStock(): Flow<List<Stock>>
+
+    @Query("SELECT * FROM Stock WHERE IngredientID = :id LIMIT 1")
+    suspend fun getStockById(id: Int): Stock?
 }

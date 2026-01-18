@@ -1,8 +1,10 @@
 package com.example.mealplanning.stock.ViewModel
 
+import androidx.compose.animation.core.copy
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.mealplanning.shoppingList.data.ShoppingCart
 import com.example.mealplanning.stock.data.Stock
 import com.example.mealplanning.stock.data.StockDao
 import kotlinx.coroutines.flow.SharingStarted
@@ -38,6 +40,29 @@ class StockViewModel(private val stockDao: StockDao) : ViewModel() {
     fun updateStockItem(stock: Stock) {
         viewModelScope.launch {
             stockDao.insert(stock)
+        }
+    }
+
+    fun updateStockFromShoppingList(cartItems: List<ShoppingCart>) {
+        viewModelScope.launch {
+            cartItems.forEach { cartItem ->
+                val existingStock = stockDao.getStockById(cartItem.IngredientID)
+
+                if (existingStock != null) {
+                    // Ingredient exists: sum the current amount with the cart amount
+                    stockDao.insert(existingStock.copy(
+                        Amount = existingStock.Amount + cartItem.Amount
+                    ))
+                } else {
+                    // Ingredient doesn't exist: create new stock entry
+                    stockDao.insert(
+                        Stock(
+                            IngredientID = cartItem.IngredientID,
+                            Amount = cartItem.Amount
+                        )
+                    )
+                }
+            }
         }
     }
 }
