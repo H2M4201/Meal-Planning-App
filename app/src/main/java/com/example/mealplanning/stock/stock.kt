@@ -70,16 +70,7 @@ fun StockScreenContent(
     var editingItem by remember { mutableStateOf<Stock?>(null) }
 
     Scaffold(
-        topBar = { AppTopBar(title = "Stock", onNavigateUp = onNavigateUp) },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showAddDialog = true },
-                containerColor = Color.LightGray,
-                contentColor = Color.Black
-            ) {
-                Icon(Icons.Filled.Add, contentDescription = "Add Item")
-            }
-        },
+        topBar = { AppTopBar(title = "Stock", onNavigateUp = onNavigateUp) },// Task 3: floatingActionButton block REMOVED
         containerColor = Color(0xFF2C2C2C)
     ) { paddingValues ->
         LazyColumn(
@@ -89,6 +80,34 @@ fun StockScreenContent(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // --- ADDED COLUMN TITLES ---
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp, bottom = 4.dp), // Adjust padding to match layout
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Ingredient Name",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1.5f),
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    Text(
+                        text = "Amount",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(0.5f),
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    // Spacer to account for the Edit/Delete button width in rows below
+                    Spacer(modifier = Modifier.width(96.dp))
+                }
+            }
+
             items(stockItems, key = { it.IngredientID }) { item ->
                 val ingredient = masterIngredients.find { it.ID == item.IngredientID }
                 if (ingredient != null) {
@@ -123,12 +142,14 @@ fun StockScreenContent(
             IngredientDialog(
                 ingredient = ingredient,
                 initialAmount = itemToEdit.Amount.toString(),
+                ingredientListVm = ingredientListVm,
+                isFromCookDialog = false,
+                isMasterIngredient = false,
                 onDismiss = { editingItem = null },
-                onSave = { name, amount, unit ->
+                onSave = { _, amount, _ ->
                     onUpdateStockItem(itemToEdit.copy(Amount = amount.toIntOrNull() ?: 0))
                     editingItem = null
-                },
-                ingredientListVm = ingredientListVm
+                }
             )
         }
     }
@@ -141,9 +162,9 @@ fun StockItemRow(ingredient: Ingredient, stock: Stock, onEdit: () -> Unit, onDel
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Surface(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1.5f),
             shape = RoundedCornerShape(8.dp),
-            color = Color.LightGray
+            color = Color(0xFFF0703C).copy(alpha = 0.9f)
         ) {
             Text(
                 text = ingredient.Name,
@@ -154,12 +175,12 @@ fun StockItemRow(ingredient: Ingredient, stock: Stock, onEdit: () -> Unit, onDel
         }
 
         Surface(
-            modifier = Modifier.width(100.dp),
+            modifier = Modifier.weight(0.8f),
             shape = RoundedCornerShape(8.dp),
-            color = Color.LightGray
+            color = Color(0xFFF0703C).copy(alpha = 0.9f)
         ) {
             Text(
-                text = stock.Amount.toString(),
+                text = "${stock.Amount} ${ingredient.Unit}",
                 modifier = Modifier.padding(16.dp),
                 color = Color.Black
             )
@@ -180,41 +201,3 @@ fun StockItemRow(ingredient: Ingredient, stock: Stock, onEdit: () -> Unit, onDel
         }
     }
 }
-
-@SuppressLint("ViewModelConstructorInComposable")
-@Preview(showBackground = true)
-@Composable
-fun StockScreenPreview() {
-    MealPlanningTheme {
-        // 1. Create fake data for the preview to display
-        val fakeMasterIngredients = listOf(
-            Ingredient(ID = 1, Name = "Chicken", Unit = "g"),
-            Ingredient(ID = 2, Name = "Carrot", Unit = "g")
-        )
-        val fakeStockItems = listOf(
-            Stock(IngredientID = 1, Amount = 500),
-            Stock(IngredientID = 2, Amount = 300)
-        )
-
-        // 2. Call the dumb component with the fake data. No DAOs needed!
-        StockScreenContent(
-            onNavigateUp = {},
-            stockItems = fakeStockItems,
-            masterIngredients = fakeMasterIngredients,
-            onAddStockItem = { _, _ -> },
-            onUpdateStockItem = {},
-            onRemoveStockItem = {},
-            // The dialog still needs this, so we must provide a dummy VM.
-            // A more advanced solution would be to make the search dialog also "dumb".
-            ingredientListVm = IngredientListViewModel(FakeIngredientDaoPreview())
-        )
-    }
-}
-
-// Add a private fake DAO just for this preview file to satisfy the IngredientListViewModel
-private class FakeIngredientDaoPreview : IngredientDao {
-    override suspend fun insert(ingredient: Ingredient) {}
-    override suspend fun delete(ingredient: Ingredient) {}
-    override fun getAllIngredients(): kotlinx.coroutines.flow.Flow<List<Ingredient>> = kotlinx.coroutines.flow.flowOf(emptyList())
-}
-

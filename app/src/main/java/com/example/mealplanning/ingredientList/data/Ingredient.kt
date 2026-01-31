@@ -8,5 +8,6 @@ data class Ingredient(
     @PrimaryKey(autoGenerate = true) // Room will automatically handle generating unique IDs
     val ID: Int = 0,
     var Name: String,
-    var Unit: String
+    var Unit: String,
+    var isActive: Int
 )

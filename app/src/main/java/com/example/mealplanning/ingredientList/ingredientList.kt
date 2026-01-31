@@ -1,6 +1,6 @@
 package com.example.mealplanning.ingredientList
 
-import android.annotation.SuppressLint
+import androidx.activity.result.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -14,25 +14,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.mealplanning.ingredientList.data.Ingredient
-import com.example.mealplanning.ingredientList.data.IngredientDao
 import com.example.mealplanning.ingredientList.ViewModel.IngredientListViewModel
-import com.example.mealplanning.ingredientList.components.MasterIngredientDialog
-import com.example.mealplanning.shareUI.components.AppTopBar
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
+import com.example.mealplanning.shareUI.components.*
+import com.example.mealplanning.stock.ViewModel.StockViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IngredientListScreen(
     onNavigateUp: () -> Unit,
-    vm: IngredientListViewModel
+    IngredientVm: IngredientListViewModel,
+    StockVm: StockViewModel
 ) {
-    val masterIngredients by vm.masterIngredients.collectAsState()
+    val masterIngredients by IngredientVm.masterIngredients.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
     var editingIngredient by remember { mutableStateOf<Ingredient?>(null) }
+    val scope = rememberCoroutineScope() // Add this
 
 
     Scaffold(
@@ -40,7 +39,7 @@ fun IngredientListScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showAddDialog = true },
-                containerColor = Color.LightGray,
+                containerColor = Color.Green,
                 contentColor = Color.Black
             ) {
                 Icon(Icons.Filled.Add, "Add Ingredient")
@@ -87,28 +86,44 @@ fun IngredientListScreen(
                 MasterIngredientRow(
                     item = item,
                     onEdit = { editingIngredient = item },
-                    onDelete = { vm.deleteIngredient(item) }
+                    onDelete = { IngredientVm.deleteIngredient(item) }
                 )
             }
         }
     }
 
     if (showAddDialog) {
-        MasterIngredientDialog(
+        IngredientDialog(
+            ingredientListVm = IngredientVm,
+            isMasterIngredient = true, // Task 1 syntax
             onDismiss = { showAddDialog = false },
-            onSave = { name, unit ->
-                vm.addIngredient(name, unit)
+            onSave = { name, _, unit ->
+                // Coordinate the two ViewModels in a single coroutine
+                scope.launch {
+                    // 1. Add the ingredient (Wait for DB insert to finish)
+                    IngredientVm.addIngredient(name, "", unit)
+
+                    // 2. Lookup the newly created ingredient to get its generated ID
+                    val newIngredient = IngredientVm.getIngredientByName(name)
+
+                    // 3. If found, initialize its stock at 0
+                    newIngredient?.let {
+                        StockVm.addNewStock(it.ID)
+                    }
+                }
                 showAddDialog = false
             }
         )
     }
 
     editingIngredient?.let { ingredientToEdit ->
-        MasterIngredientDialog(
+        IngredientDialog(
             ingredient = ingredientToEdit,
+            ingredientListVm = IngredientVm,
+            isMasterIngredient = true,
             onDismiss = { editingIngredient = null },
-            onSave = { name, unit ->
-                vm.updateIngredient(ingredientToEdit.copy(Name = name, Unit = unit))
+            onSave = { name, _, unit ->
+                IngredientVm.updateIngredient(ingredientToEdit.copy(Name = name, Unit = unit))
                 editingIngredient = null
             }
         )
@@ -157,29 +172,5 @@ fun MasterIngredientRow(item: Ingredient, onEdit: () -> Unit, onDelete: () -> Un
         ) {
             Icon(Icons.Default.Close, "Delete", tint = Color.White)
         }
-    }
-}
-
-// Private fake DAO for previewing the screen
-private class FakeIngredientDao : IngredientDao {
-    override suspend fun insert(ingredient: Ingredient) {}
-    override suspend fun delete(ingredient: Ingredient) {}
-    override fun getAllIngredients(): Flow<List<Ingredient>> = flowOf(
-        listOf(
-            Ingredient(1, "Chicken", "kg"),
-            Ingredient(2, "Carrot", "g")
-        )
-    )
-}
-
-@SuppressLint("ViewModelConstructorInComposable")
-@Preview(showBackground = true)
-@Composable
-fun IngredientListScreenPreview() {
-    MaterialTheme {
-        IngredientListScreen(
-            onNavigateUp = {},
-            vm = IngredientListViewModel(FakeIngredientDao())
-        )
     }
 }

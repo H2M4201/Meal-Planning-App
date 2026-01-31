@@ -31,9 +31,9 @@ fun ShoppingItemRow(ingredient: Ingredient, shoppingCart: ShoppingCart, onEdit: 
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Surface(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1.5f),
             shape = MaterialTheme.shapes.medium,
-            color = Color.LightGray
+            color = Color(0xFFF0703C).copy(alpha = 0.9f)
         ) {
             Text(
                 text = ingredient.Name,
@@ -43,9 +43,9 @@ fun ShoppingItemRow(ingredient: Ingredient, shoppingCart: ShoppingCart, onEdit: 
             )
         }
         Surface(
-            modifier = Modifier.width(100.dp),
+            modifier = Modifier.weight(0.5f),
             shape = MaterialTheme.shapes.medium,
-            color = Color.LightGray
+            color = Color(0xFFF0703C).copy(alpha = 0.9f)
         ) {
             Text(
                 text = shoppingCart.Amount.toString(),

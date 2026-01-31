@@ -97,7 +97,8 @@ fun AppNavigation() {
         composable("ingredientList") {
             IngredientListScreen(
                 onNavigateUp = { navController.navigateUp() },
-                vm = ingredientListViewModel
+                IngredientVm = ingredientListViewModel,
+                StockVm = stockViewModel
             )
         }
     }

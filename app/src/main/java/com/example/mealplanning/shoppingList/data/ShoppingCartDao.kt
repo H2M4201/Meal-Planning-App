@@ -17,4 +17,17 @@ interface ShoppingCartDao {
 
     @Query("SELECT * FROM ShoppingCart WHERE IngredientID = :id AND week = :week LIMIT 1")
     suspend fun getCartItem(id: Int, week: LocalDate): ShoppingCart?
+
+    @Update
+    suspend fun update(shoppingCart: ShoppingCart)
+
+    @Query("UPDATE ShoppingCart SET LastUpdatedStock = Amount WHERE ID = :id")
+    suspend fun saveLastUpdatedStock(id: Int)
+
+    @Transaction
+    suspend fun updateLastStockSyncAmountLoop(items: List<ShoppingCart>) {
+        items.forEach { item ->
+            saveLastUpdatedStock(item.ID)
+        }
+    }
 }

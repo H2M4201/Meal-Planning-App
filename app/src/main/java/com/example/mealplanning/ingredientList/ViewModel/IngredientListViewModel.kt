@@ -7,6 +7,7 @@ import com.example.mealplanning.ingredientList.data.Ingredient
 import com.example.mealplanning.ingredientList.data.IngredientDao
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -19,22 +20,25 @@ class IngredientListViewModel(private val ingredientDao: IngredientDao) : ViewMo
             initialValue = emptyList()
         )
 
-    fun addIngredient(name: String, unit: String) {
-        viewModelScope.launch {
-            ingredientDao.insert(Ingredient(Name = name, Unit = unit))
-        }
+    suspend fun addIngredient(name: String, amount: String, unit: String) {
+        val ingredient = Ingredient(Name = name, Unit = unit, isActive = 1)
+        ingredientDao.insert(ingredient)
     }
 
     fun deleteIngredient(ingredient: Ingredient) {
         viewModelScope.launch {
-            ingredientDao.delete(ingredient)
+            ingredientDao.markAsInactive(ingredient.ID)
         }
     }
 
     fun updateIngredient(ingredient: Ingredient) {
         viewModelScope.launch {
-            ingredientDao.insert(ingredient)
+            ingredientDao.update(ingredient)
         }
+    }
+
+    suspend fun getIngredientByName(name: String): Ingredient? {
+        return ingredientDao.getIngredientByName(name)
     }
 }
 

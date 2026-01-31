@@ -86,7 +86,7 @@ fun RowScope.MealCell(mealPlan: MealPlan?, weight: Float, onClick: () -> Unit) {
         // MODIFICATION: This logic now correctly determines what to display.
         if (mealPlan == null) {
             // If there's no meal plan, the cell is empty. Show nothing.
-        } else if (mealPlan.IsEatOut) {
+        } else if (mealPlan.Status == 0) {
             // If it's an "Eat Out" meal, show an 'X'.
             Text(
                 text = "X",

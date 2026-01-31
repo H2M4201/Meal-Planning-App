@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -60,7 +61,7 @@ fun CookDialog(
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth(1f),
             colors = CardDefaults.cardColors(containerColor = Color(0xFF2C2C2C)),
             border = BorderStroke(1.dp, Color.Gray)
         ) {
@@ -72,7 +73,8 @@ fun CookDialog(
             ) {
                 Text(
                     text = "${getMealTypeName(meal.mealType)} - ${meal.date.format(dateFormatter)}",
-                    color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold
+                    color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top=16.dp)
                 )
                 Spacer(Modifier.height(16.dp))
 
@@ -131,7 +133,7 @@ fun CookDialog(
                                 ID = meal.mealPlan?.ID ?: 0,
                                 Date = meal.date,
                                 MealType = meal.mealType,
-                                IsEatOut = false,
+                                Status = 1,
                                 MealName = dishName
                             )
                             onSave(newMealPlan, recipeIngredients.toList())
@@ -153,14 +155,12 @@ fun CookDialog(
     if (showAddIngredientDialog) {
         IngredientDialog(
             ingredientListVm = ingredientListVm,
+            isFromCookDialog = true, // Enables the Search bar
             onDismiss = { showAddIngredientDialog = false },
             onSave = { name, amount, unit ->
                 val existingIngredient = masterIngredients.find { it.Name.equals(name, ignoreCase = true) }
                 if (existingIngredient != null) {
-                    // MODIFICATION: Create a MealPlanDetail object instead of copying an Ingredient.
                     val newDetail = MealPlanDetail(
-                        // The MealPlanID will be set correctly when the whole meal is saved.
-                        // We use a placeholder (like the existing meal's ID or 0) for now.
                         MealPlanID = meal.mealPlan?.ID ?: 0,
                         IngredientID = existingIngredient.ID,
                         Amount = amount.toIntOrNull() ?: 0
@@ -208,48 +208,57 @@ fun IngredientRow(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {    Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Surface(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.width(130.dp),
             shape = RoundedCornerShape(8.dp),
-            color = Color.LightGray
+            color = Color(0xFFF0703C)
         ) {
             Text(
                 // Get Name from master ingredient
                 text = masterIngredient.Name,
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier.padding(8.dp),
                 color = Color.Black,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp
             )
         }
         Surface(
-            modifier = Modifier.width(100.dp),
+            modifier = Modifier.width(65.dp),
             shape = RoundedCornerShape(8.dp),
-            color = Color.LightGray
+            color = Color(0xFFF0703C)
         ) {
             Text(
                 // MODIFICATION 4: Get Amount from recipe ingredient and Unit from master ingredient
                 text = "$amount${masterIngredient.Unit}",
-                modifier = Modifier.padding(16.dp),
-                color = Color.Black
+                modifier = Modifier.padding(8.dp),
+                color = Color.Black,
+                fontSize = 14.sp
             )
         }
-        IconButton(
-            onClick = onEdit,
-            modifier = Modifier.background(Color.White, shape = RoundedCornerShape(8.dp))
-        ) {
-            Icon(Icons.Default.Edit, contentDescription = "Edit Item", tint = Color.Black)
-        }
-        IconButton(
-            onClick = onDelete,
-            modifier = Modifier.background(Color(0xFFFF5252), shape = RoundedCornerShape(8.dp))
-        ) {
-            Icon(Icons.Default.Close, contentDescription = "Delete Item", tint = Color.White)
-        }
+    IconButton(
+        onClick = onEdit,
+        modifier = Modifier
+            .background(Color.White, shape = RoundedCornerShape(8.dp))
+            .size(width = 40.dp, height = 40.dp)
+    ) {
+        Icon(Icons.Default.Edit, contentDescription = "Edit Item", tint = Color.Black)
     }
+
+    IconButton(
+        onClick = onDelete,
+        modifier = Modifier
+            .background(Color(0xFFFF5252), shape = RoundedCornerShape(8.dp))
+            .size(width = 40.dp, height = 40.dp)
+    ) {
+        Icon(Icons.Default.Close, contentDescription = "Delete Item", tint = Color.White)
+    }
+}
 }
 
 @Composable

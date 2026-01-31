@@ -24,6 +24,8 @@ fun IngredientDialog(
     ingredient: Ingredient? = null,
     initialAmount: String = "",
     ingredientListVm: IngredientListViewModel,
+    isFromCookDialog: Boolean = false,
+    isMasterIngredient: Boolean = false, // TASK 1: New parameter to identify caller
     onDismiss: () -> Unit,
     onSave: (name: String, amount: String, unit: String) -> Unit
 ) {
@@ -41,43 +43,70 @@ fun IngredientDialog(
                 modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedTextField(
-                    value = "",
-                    onValueChange = {},
-                    label = { Text("Search saved ingredient") },
-                    shape = RoundedCornerShape(50),
-                    leadingIcon = { Icon(Icons.Default.Search, "Search") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { showSearchDialog = true },
-                    readOnly = true,
-                    enabled = false,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        disabledBorderColor = MaterialTheme.colorScheme.onSurface,
-                        disabledLabelColor = MaterialTheme.colorScheme.onSurface,
-                        disabledLeadingIconColor = MaterialTheme.colorScheme.onSurface
+                // TASK 1: Only show search if called from CookDialog
+                if (isFromCookDialog) {
+                    OutlinedTextField(
+                        value = "",
+                        onValueChange = {},
+                        label = { Text("Search saved ingredient") },
+                        shape = RoundedCornerShape(50),
+                        leadingIcon = { Icon(Icons.Default.Search, "Search") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showSearchDialog = true },
+                        readOnly = true,
+                        enabled = false,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledBorderColor = MaterialTheme.colorScheme.onSurface,
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurface,
+                            disabledLeadingIconColor = MaterialTheme.colorScheme.onSurface
+                        )
                     )
-                )
+                }
+
+                // TASK 1: Only show manual Name entry if NOT from CookDialog
+                if (!isFromCookDialog) {
+                    OutlinedTextField(
+                        value = itemName,
+                        onValueChange = { itemName = it },
+                        label = { Text("Enter Item name") },
+                        shape = RoundedCornerShape(50),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                else if (itemName.isNotBlank()) {
+                    // Show selection feedback in CookDialog
+                    Text(
+                        text = "Selected: $itemName",
+                        color = Color.White,
+                        modifier = Modifier.padding(start = 8.dp),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+
+                if (!isMasterIngredient) {
+                    OutlinedTextField(
+                        value = itemAmount,
+                        onValueChange = {
+                            if (it.matches(Regex("^\\d*\\.?\\d*$"))) {
+                                itemAmount = it
+                            }
+                        },
+                        label = { Text("Enter amount") },
+                        shape = RoundedCornerShape(50),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
                 OutlinedTextField(
-                    value = itemName,
-                    onValueChange = { itemName = it },
-                    label = { Text("Enter Item name") },
+                    value = itemUnit,
+                    onValueChange = { itemUnit = it },
+                    label = { Text("Enter unit") },
                     shape = RoundedCornerShape(50),
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                OutlinedTextField(
-                    value = itemAmount,
-                    onValueChange = {
-                        if (it.matches(Regex("^\\d*\\.?\\d*$"))) {
-                            itemAmount = it
-                        }
-                    },
-                    label = { Text("Enter amount") },
-                    shape = RoundedCornerShape(50),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.fillMaxWidth()
-                )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -87,8 +116,11 @@ fun IngredientDialog(
                 ) {
                     Button(
                         onClick = {
-                            if (itemName.isNotBlank() && itemAmount.isNotBlank()) {
-                                onSave(itemName, itemAmount, itemUnit)
+                            if (itemName.isNotBlank()) {
+                                if (!isMasterIngredient) {
+                                    onSave(itemName, itemAmount, itemUnit)
+                                }
+                                onSave(itemName, "", itemUnit)
                             }
                         },
                         shape = RoundedCornerShape(50),
@@ -122,7 +154,7 @@ fun IngredientDialog(
 }
 
 @Composable
-private fun IngredientSearchDialog(
+fun IngredientSearchDialog(
     ingredientListVm: IngredientListViewModel,
     onDismiss: () -> Unit,
     onIngredientSelected: (Ingredient) -> Unit

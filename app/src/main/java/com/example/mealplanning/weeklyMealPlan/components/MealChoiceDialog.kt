@@ -59,9 +59,12 @@ fun MealChoiceDialog(
                 Button(
                     onClick = { onResult(MealChoice.EAT_OUT) },
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray)
+                    // If already EatOut, change to Red, otherwise LightGray
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (meal.mealPlan?.Status == 0) Color.Red else Color.LightGray
+                    )
                 ) {
-                    Text("Eat Out", color = Color.Black)
+                    Text("Eat Out", color = if (meal.mealPlan?.Status == 0) Color.White else Color.Black)
                 }
             }
         }

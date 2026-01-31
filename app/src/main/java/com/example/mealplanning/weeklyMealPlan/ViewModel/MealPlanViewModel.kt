@@ -3,41 +3,26 @@ package com.example.mealplanning.weeklyMealPlan.ViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.mealplanning.ingredientList.data.Ingredient
 import com.example.mealplanning.ingredientList.data.IngredientDao
+import com.example.mealplanning.shoppingList.ViewModel.ShoppingListViewModel
+import com.example.mealplanning.weeklyMealPlan.data.IngredientSummary
 import com.example.mealplanning.weeklyMealPlan.data.MealPlan
 import com.example.mealplanning.weeklyMealPlan.data.MealPlanDao
 import com.example.mealplanning.weeklyMealPlan.data.MealPlanDetail
-import com.example.mealplanning.shoppingList.ViewModel.ShoppingListViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.first
 import java.time.LocalDate
 
 class MealPlanViewModel(
     private val mealPlanDao: MealPlanDao,
     private val ingredientDao: IngredientDao // Add the IngredientDao dependency
 ) : ViewModel() {
-//    fun getMealPlansForWeek(startOfWeek: LocalDate): StateFlow<List<MealPlan>> {
-//        val endOfWeek = startOfWeek.plusDays(6)
-//        return mealPlanDao.getMealPlansForWeek(startOfWeek, endOfWeek)
-//            .stateIn(
-//                scope = viewModelScope,
-//                started = SharingStarted.WhileSubscribed(5000L),
-//                initialValue = emptyList()
-//            )
-//    }
-//
-//    fun getMealPlanDetails(mealPlanId: Int): StateFlow<List<MealPlanDetail>> {
-//        return mealPlanDao.getMealPlanDetails(mealPlanId)
-//            .stateIn(
-//                scope = viewModelScope,
-//                started = SharingStarted.WhileSubscribed(5000L),
-//                initialValue = emptyList()
-//            )
-//    }
+
 
     fun getMealPlanWithDetailsByWeek(startOfWeek: LocalDate): StateFlow<Map<MealPlan, List<MealPlanDetail>>> {
         val endOfWeek = startOfWeek.plusDays(6)
@@ -49,16 +34,26 @@ class MealPlanViewModel(
             )
     }
 
-    fun saveMealPlan(mealPlan: MealPlan, details: List<MealPlanDetail>) {
+    fun saveMealPlan(mealPlan: MealPlan, details: List<MealPlanDetail>, isNew: Boolean) {
         viewModelScope.launch {
-            // This returns the new/updated MealPlan's ID
-            val mealPlanId = mealPlanDao.insertMealPlan(mealPlan)
-            // Associate all details with the correct MealPlan ID
-            details.forEach { detail ->
-                mealPlanDao.insertMealPlanDetail(detail.copy(MealPlanID = mealPlanId.toInt()))
+            if (isNew) {
+                // New Logic: Insert and get new ID
+                val mealPlanId = mealPlanDao.insertMealPlan(mealPlan)
+                details.forEach { detail ->
+                    mealPlanDao.insertMealPlanDetail(detail.copy(MealPlanID = mealPlanId.toInt()))
+                }
+            } else {
+                // Update Logic: Explicit Update for the main record
+                mealPlanDao.updateMealPlan(mealPlan)
+
+                // 2. Insert the current list of details
+                details.forEach { detail ->
+                    mealPlanDao.updateMealPlanDetail(detail)
+                }
             }
         }
     }
+
 
     fun removeMealPlan(mealPlan: MealPlan) {
         // This will also remove the details due to the CASCADE onDelete
@@ -67,32 +62,52 @@ class MealPlanViewModel(
         }
     }
 
-    fun updateShoppingListForWeek(
+    fun getTotalIngredientsByWeek(startOfWeek: LocalDate): StateFlow<List<IngredientSummary>> {
+        val endOfWeek = startOfWeek.plusDays(6)
+        return mealPlanDao.getIngredientsForWeek(startOfWeek, endOfWeek)
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000L),
+                initialValue = emptyList()
+            )
+    }
+
+    fun syncMealPlanIngredientsToCart(
+        details: List<MealPlanDetail>, // Passed from Screen
         startOfWeek: LocalDate,
         shoppingListVm: ShoppingListViewModel
     ) {
         viewModelScope.launch {
-            val endOfWeek = startOfWeek.plusDays(6)
-            // 1. Get all raw meal details for the week
-            val mealDetails = mealPlanDao.getIngredientsForWeek(startOfWeek, endOfWeek)
+            // Step A: Mark the current state as "synced" by updating LastCartUpdated = Amount
+            // This must be done BEFORE we calculate the next delta
+            mealPlanDao.updateLastCartSyncAmount(details)
 
-            // 2. Group by IngredientID and sum the Amounts so we don't have duplicates
-            val itemsToCart = mealDetails
-                .groupBy { it.IngredientID }
-                .map { (ingredientId, details) ->
-                    com.example.mealplanning.shoppingList.data.ShoppingCart(
-                        IngredientID = ingredientId,
-                        Amount = details.sumOf { it.Amount },
-                        week = startOfWeek
-                    )
-                }
+            // Step B: Collect the latest totals (which now include the updated LastCartUpdated)
+            // We fetch one snapshot to pass to the shopping list
+            val ingredientSummaries = getTotalIngredientsByWeek(startOfWeek).first()
 
-            // 3. Send the aggregated ShoppingCart items to the ShoppingListViewModel
-            if (itemsToCart.isNotEmpty()) {
-                shoppingListVm.addItemsToCart(itemsToCart)
-            }
+            // Step C: Hand over the summaries to ShoppingList to calculate the delta
+            shoppingListVm.updateShoppingListFromMealPlan(ingredientSummaries, startOfWeek)
         }
     }
+
+    fun getDishesToCook(startOfWeek: LocalDate): StateFlow<List<MealPlan>> {
+        val endOfWeek = startOfWeek.plusDays(6)
+        return mealPlanDao.getMealPlanWithDetailsByWeek(startOfWeek, endOfWeek)
+            .map { map ->
+                map.keys
+                    .filter { it.Status != 0 }
+                    .sortedWith(compareBy({ it.Date }, { it.MealType }))
+            }
+            .distinctUntilChanged() // Prevents emissions if the list content is the same
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000L),
+                initialValue = emptyList()
+            )
+    }
+
+
 }
 
 class MealPlanViewModelFactory(

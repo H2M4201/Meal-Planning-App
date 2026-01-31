@@ -1,30 +1,22 @@
 package com.example.mealplanning.shoppingList
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.mealplanning.ingredientList.data.Ingredient
 import com.example.mealplanning.shoppingList.data.ShoppingCart
-import com.example.mealplanning.ingredientList.data.IngredientDao
 import com.example.mealplanning.ingredientList.ViewModel.IngredientListViewModel
 import com.example.mealplanning.shareUI.components.AppTopBar
 import com.example.mealplanning.shareUI.components.IngredientDialog
-import com.example.mealplanning.shareUI.theme.MealPlanningTheme
 import com.example.mealplanning.shoppingList.ViewModel.ShoppingListViewModel
 import com.example.mealplanning.shoppingList.components.ShoppingItemRow
 import com.example.mealplanning.stock.ViewModel.StockViewModel
@@ -51,42 +43,7 @@ fun ShoppingListScreen(
         shoppingListVm.getCartForWeek(currentWeekStart)
     }.collectAsState(initial = emptyList())
     val masterIngredients by ingredientListVm.masterIngredients.collectAsState()
-
-    ShoppingListScreenContent(
-        onNavigateUp = onNavigateUp,
-        currentWeekStart = currentWeekStart,
-        currentWeekItems = currentWeekItems,
-        masterIngredients = masterIngredients,
-        onWeekChange = { newDate -> currentWeekStart = newDate },
-        onUpdateItem = { item -> shoppingListVm.updateShoppingCartItem(item) },
-        onRemoveItem = { item -> shoppingListVm.removeShoppingCartItem(item) },
-        onAddItemsToStock = { cartItems ->
-            // Convert List<ShoppingCart> to List<Stock>
-            val stockItemsToAdd = cartItems.map { cartItem ->
-                Stock(IngredientID = cartItem.IngredientID, Amount = cartItem.Amount)
-            }
-            stockVm.addStockItems(stockItemsToAdd)
-        },        ingredientListVm = ingredientListVm
-    )
-}
-
-// MODIFICATION 2: The "Dumb" Composable
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ShoppingListScreenContent(
-    onNavigateUp: () -> Unit,
-    currentWeekStart: LocalDate,
-    currentWeekItems: List<ShoppingCart>,
-    masterIngredients: List<Ingredient>,
-    onWeekChange: (LocalDate) -> Unit,
-    onUpdateItem: (ShoppingCart) -> Unit,
-    onRemoveItem: (ShoppingCart) -> Unit,
-    onAddItemsToStock: (List<ShoppingCart>) -> Unit,
-    ingredientListVm: IngredientListViewModel
-) {
     var editingItem by remember { mutableStateOf<ShoppingCart?>(null) }
-    // Logic for 'isBought' can be managed here or passed down if needed
-    val isBought = false
 
     Scaffold(
         topBar = { AppTopBar(title = "Shopping List", onNavigateUp = onNavigateUp) },
@@ -100,8 +57,8 @@ fun ShoppingListScreenContent(
         ) {
             ShoppingListTopControls(
                 weekStartDate = currentWeekStart,
-                onLastWeek = { onWeekChange(currentWeekStart.minusWeeks(1)) },
-                onNextWeek = { onWeekChange(currentWeekStart.plusWeeks(1)) }
+                onLastWeek = { currentWeekStart = currentWeekStart.minusWeeks(1) },
+                onNextWeek = { currentWeekStart = currentWeekStart.plusWeeks(1) }
             )
 
             if (currentWeekItems.isEmpty()) {
@@ -120,8 +77,8 @@ fun ShoppingListScreenContent(
                                 ingredient = ingredient,
                                 shoppingCart = item,
                                 onEdit = { editingItem = item },
-                                onDelete = { onRemoveItem(item) },
-                                isBought = isBought
+                                onDelete = { shoppingListVm.removeShoppingCartItem(item) },
+                                isBought = false // Logic for bought items can be added via a DB column later
                             )
                         }
                     }
@@ -130,39 +87,44 @@ fun ShoppingListScreenContent(
 
             Button(
                 onClick = {
-                    // 1. Filter only items NOT already in stock to avoid double-adding
-                    val itemsToAdd = currentWeekItems.filter { !it.isUpdateStock }
-                    if (itemsToAdd.isNotEmpty()) {
-                        onAddItemsToStock(itemsToAdd)
-
-                        // 2. Mark these specific items as pushed to stock in DB
-                        itemsToAdd.forEach { item ->
-                            onUpdateItem(item.copy(isUpdateStock = true))
+                    // Logic: Add the delta (Amount - LastUpdatedStock) to Stock
+                    val itemsToUpdate = currentWeekItems.filter { it.Amount > it.LastUpdatedStock }
+                    if (itemsToUpdate.isNotEmpty()) {
+                        val stockItemsToAdd = itemsToUpdate.map { cartItem ->
+                            // The delta amount is what needs to be added to stock
+                            val delta = cartItem.Amount - cartItem.LastUpdatedStock
+                            Stock(IngredientID = cartItem.IngredientID, Amount = delta)
                         }
+                        // 1. Update Stock amounts
+                        stockVm.addStockItems(stockItemsToAdd)
+
+                        // 2. Sync LastUpdatedStock = Amount in ShoppingCart so delta becomes 0
+                        shoppingListVm.updateLastStockSyncAmount(itemsToUpdate)
                     }
                 },
-                enabled = currentWeekItems.isNotEmpty() && !isBought,
+                enabled = currentWeekItems.isNotEmpty(),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 16.dp)
             ) {
-                Text(if (currentWeekItems.all { it.isUpdateStock }) "Items Added to Stock" else "Add to Stock")            }
+            }
         }
-    }
 
-    editingItem?.let { itemToEdit ->
-        val ingredient = masterIngredients.find { it.ID == itemToEdit.IngredientID }
-        if (ingredient != null) {
-            IngredientDialog(
-                ingredient = ingredient,
-                initialAmount = itemToEdit.Amount.toString(),
-                onDismiss = { editingItem = null },
-                onSave = { _, amount, _ ->
-                    onUpdateItem(itemToEdit.copy(Amount = amount.toIntOrNull() ?: 0))
-                    editingItem = null
-                },
-                ingredientListVm = ingredientListVm
-            )
+        editingItem?.let { itemToEdit ->
+            val ingredient = masterIngredients.find { it.ID == itemToEdit.IngredientID }
+            if (ingredient != null) {
+                IngredientDialog(
+                    ingredient = ingredient,
+                    initialAmount = itemToEdit.Amount.toString(),
+                    ingredientListVm = ingredientListVm,
+                    isMasterIngredient = false,
+                    onDismiss = { editingItem = null },
+                    onSave = { _, amount, _ ->
+                        shoppingListVm.updateShoppingCartItem(itemToEdit.copy(Amount = amount.toIntOrNull() ?: 0))
+                        editingItem = null
+                    }
+                )
+            }
         }
     }
 }

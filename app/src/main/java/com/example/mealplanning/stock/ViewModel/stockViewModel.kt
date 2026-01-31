@@ -21,6 +21,11 @@ class StockViewModel(private val stockDao: StockDao) : ViewModel() {
             initialValue = emptyList()
         )
 
+    fun addNewStock(ingredientId: Int) {
+        viewModelScope.launch {
+            stockDao.insert(Stock(IngredientID = ingredientId, Amount = 0))
+        }
+    }
     fun addStockItems(newStockItems: List<Stock>) {
         viewModelScope.launch {
             // A more robust implementation would consolidate amounts.
@@ -42,6 +47,8 @@ class StockViewModel(private val stockDao: StockDao) : ViewModel() {
             stockDao.insert(stock)
         }
     }
+
+
 
     fun updateStockFromShoppingList(cartItems: List<ShoppingCart>) {
         viewModelScope.launch {

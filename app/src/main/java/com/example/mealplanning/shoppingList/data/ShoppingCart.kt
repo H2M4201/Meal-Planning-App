@@ -23,5 +23,5 @@ data class ShoppingCart(
     val IngredientID: Int,
     val Amount: Int,
     val week: LocalDate,
-    val isUpdateStock: Boolean = false // New column
+    val LastUpdatedStock: Int = 0 // Replaced isUpdateStock -> Bool
 )

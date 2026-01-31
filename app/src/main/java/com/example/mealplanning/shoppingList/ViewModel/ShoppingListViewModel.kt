@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.mealplanning.shoppingList.data.ShoppingCart
 import com.example.mealplanning.shoppingList.data.ShoppingCartDao
+import com.example.mealplanning.weeklyMealPlan.data.IngredientSummary
 import com.example.mealplanning.weeklyMealPlan.data.MealPlanDetail
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -45,58 +46,45 @@ class ShoppingListViewModel(private val shoppingCartDao: ShoppingCartDao) : View
         }
     }
 
-    fun addItemsToCart(items: List<ShoppingCart>) {
+    fun updateLastStockSyncAmount(items: List<ShoppingCart>) {
         viewModelScope.launch {
-            items.forEach { item ->
-                shoppingCartDao.insert(item)
-            }
+            // Step 1: Sync the current database state (Amount -> LastUpdatedStock)
+            shoppingCartDao.updateLastStockSyncAmountLoop(items)
         }
     }
 
-    fun updateShoppingListFromMealPlan(mealPlanDetails: List<MealPlanDetail>, weekStartDate: LocalDate) {
+    fun updateShoppingListFromMealPlan(ingredientSummaries: List<IngredientSummary>, weekStartDate: LocalDate) {
         viewModelScope.launch {
-            // 1. Get the total required amount of each ingredient from the Meal Plan for this week
-            val mealPlanTotals = mealPlanDetails.groupBy { it.IngredientID }
-                .mapValues { (_, details) -> details.sumOf { it.Amount } }
+            // 1. The "Source of Truth" is now the Delta provided by the summaries
+            val ingredientDeltas = ingredientSummaries.associate {
+                it.IngredientID to (it.TotalAmount - it.TotalLastUpdated)
+            }
 
-            // 2. Get the current Shopping Cart items for this week from the DB
-            // We convert it to a map for easy lookup: IngredientID -> ShoppingCart object
+            // 2. Get current Cart snapshot
             val currentCartItems = shoppingCartDao.getCartForWeek(weekStartDate)
                 .first()
                 .associateBy { it.IngredientID }
 
-            // 3. Reconcile Meal Plan Totals with Shopping Cart
-
-            // Handle items that ARE in the Meal Plan
-            mealPlanTotals.forEach { (ingredientId, totalRequired) ->
+            // 3. Apply deltas to Shopping Cart
+            ingredientDeltas.forEach { (ingredientId, delta) ->
                 val existingCartItem = currentCartItems[ingredientId]
 
-                if (totalRequired > 0) {
-                    if (existingCartItem != null) {
-                        // Scenario: Mismatch in total amount -> Update
-                        if (existingCartItem.Amount != totalRequired) {
-                            shoppingCartDao.insert(existingCartItem.copy(Amount = totalRequired))
-                        }
+                if (existingCartItem != null) {
+                    val newAmount = (existingCartItem.Amount + delta).coerceAtLeast(0)
+                    if (newAmount == 0) {
+                        shoppingCartDao.delete(existingCartItem)
                     } else {
-                        // Scenario: Meal plan has it, but Shopping Cart doesn't -> Add
-                        shoppingCartDao.insert(
-                            ShoppingCart(
-                                IngredientID = ingredientId,
-                                Amount = totalRequired,
-                                week = weekStartDate
-                            )
-                        )
+                        // Explicitly use .update() as requested
+                        shoppingCartDao.update(existingCartItem.copy(Amount = newAmount))
                     }
-                } else if (totalRequired == 0 && existingCartItem != null) {
-                    // Scenario: Meal plan total is 0, but item exists in cart -> Delete
-                    shoppingCartDao.delete(existingCartItem)
-                }
-            }
-
-            // 4. Handle items that are in the Shopping Cart but NO LONGER in the Meal Plan at all
-            currentCartItems.forEach { (ingredientId, cartItem) ->
-                if (!mealPlanTotals.containsKey(ingredientId)) {
-                    shoppingCartDao.delete(cartItem)
+                } else if (delta > 0) {
+                    shoppingCartDao.insert(
+                        ShoppingCart(
+                            IngredientID = ingredientId,
+                            Amount = delta,
+                            week = weekStartDate
+                        )
+                    )
                 }
             }
         }

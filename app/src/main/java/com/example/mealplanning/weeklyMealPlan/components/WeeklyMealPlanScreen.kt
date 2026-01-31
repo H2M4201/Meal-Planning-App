@@ -2,12 +2,13 @@ package com.example.mealplanning.weeklyMealPlan.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -57,6 +58,7 @@ fun WeeklyMealPlanScreen(
     var showMealChoiceDialog by remember { mutableStateOf<UIMeal?>(null) }
     var showCookDialog by remember { mutableStateOf<UIMeal?>(null) }
 
+    val dishesToCook by vm.getDishesToCook(startOfWeek).collectAsState()
 
 
     Scaffold(
@@ -76,11 +78,13 @@ fun WeeklyMealPlanScreen(
                 onLastWeek = { startOfWeek = startOfWeek.minusWeeks(1) },
                 onNextWeek = { startOfWeek = startOfWeek.plusWeeks(1) },
                 onUpdateShoppingList = {
-                    // Flatten all MealPlanDetail objects from the current week's map
                     val allDetails = weeklyMealPlans.values.flatten()
-
                     if (allDetails.isNotEmpty()) {
-                        shoppingListVm.updateShoppingListFromMealPlan(allDetails, startOfWeek)
+                        // This now handles:
+                        // 1. Syncing LastCartUpdated in MealPlanDetail
+                        // 2. Calculating IngredientSummary
+                        // 3. Updating ShoppingCart with the delta
+                        vm.syncMealPlanIngredientsToCart(allDetails, startOfWeek, shoppingListVm)
                     }
                 }
             )
@@ -91,13 +95,18 @@ fun WeeklyMealPlanScreen(
                 onCellClick = { uiMeal ->
                     // MODIFICATION: Check IsEatOut status or if it's a new meal
                     // If it's already marked as EatOut, or if it's empty, show Choice dialog
-                    if (uiMeal.mealPlan == null || uiMeal.mealPlan.IsEatOut) {
+                    if (uiMeal.mealPlan == null || uiMeal.mealPlan.Status == 0) {
                         showMealChoiceDialog = uiMeal
                     } else {
                         // If it's an existing Cooked meal, show Choice dialog to allow changing to EatOut
                         showCookDialog = uiMeal
                     }
                 }
+            )
+
+            DishSummaryList(
+                modifier = Modifier.weight(1f),
+                dishes = dishesToCook
             )
 
             Row(
@@ -127,16 +136,16 @@ fun WeeklyMealPlanScreen(
                         showCookDialog = meal
                     }
                     MealChoice.EAT_OUT -> {
+                        val isNew = meal.mealPlan == null
                         // If user chooses "Eat Out", save it directly
                         val eatOutMealPlan = MealPlan(
                             ID = 0, // New entry
                             Date = meal.date,
                             MealType = meal.mealType,
-                            IsEatOut = true,
+                            Status = 0,
                             MealName = "Eat Out"
                         )
-                        vm.saveMealPlan(eatOutMealPlan, emptyList())
-                    }
+                        vm.saveMealPlan(eatOutMealPlan, emptyList(), isNew)                    }
                 }
             }
         )
@@ -148,7 +157,8 @@ fun WeeklyMealPlanScreen(
             ingredientListVm = ingredientListVm,
             onDismiss = { showCookDialog = null },
             onSave = { mealPlan, details ->
-                vm.saveMealPlan(mealPlan, details)
+                val isNew = uiMeal.mealPlan == null
+                vm.saveMealPlan(mealPlan, details, isNew)
                 showCookDialog = null
             },
             onRemove = {
@@ -158,14 +168,15 @@ fun WeeklyMealPlanScreen(
                 showCookDialog = null
             },
             onSetEatOut = {
+                val isNew = uiMeal.mealPlan == null
                 val eatOutMealPlan = MealPlan(
                     ID = uiMeal.mealPlan?.ID ?: 0,
                     Date = uiMeal.date,
                     MealType = uiMeal.mealType,
-                    IsEatOut = true,
+                    Status = 0,
                     MealName = "Eat Out"
                 )
-                vm.saveMealPlan(eatOutMealPlan, emptyList())
+                vm.saveMealPlan(eatOutMealPlan, emptyList(), isNew)
                 showCookDialog = null
             }
         )
@@ -187,29 +198,29 @@ fun TopControls(
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Start,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(0.6f)
         ) {
-            IconButton(onClick = onLastWeek) {
-                Icon(
+            IconButton(onClick = onLastWeek, modifier = Modifier.size(32.dp)) {                Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Last Week",
                     tint = Color.White
                 )
             }
             Text(
-                text = "Last Week",
+                text = "Last\nWeek",
+                style = MaterialTheme.typography.bodyMedium,
                 color = Color.White,
-                modifier = Modifier.padding(horizontal = 8.dp)
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 12.dp)
             )
-            Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "Next Week",
+                text = "Next\nWeek",
                 color = Color.White,
-                modifier = Modifier.padding(horizontal = 8.dp)
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 12.dp)
             )
-            IconButton(onClick = onNextWeek) {
-                Icon(
+            IconButton(onClick = onNextWeek, modifier = Modifier.size(32.dp)) {                Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                     contentDescription = "Next Week",
                     tint = Color.White
@@ -217,11 +228,21 @@ fun TopControls(
             }
         }
 
-        TextButton(onClick = onUpdateShoppingList) {
+        FilledTonalButton(
+            onClick = onUpdateShoppingList,
+            modifier = Modifier.weight(0.4f), // More space allocated
+            colors = ButtonDefaults.filledTonalButtonColors(
+                containerColor = Color(0xFFFF4E4E), // Greenish background
+                contentColor = Color.White
+            ),
+            shape = RoundedCornerShape(8.dp),
+            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
+        ) {
             Text(
-                text = "Update\nShopping List",
-                color = Color.White,
-                textAlign = TextAlign.Center
+                text = "Update Shopping List",
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.labelMedium,
+                lineHeight = androidx.compose.ui.unit.TextUnit.Unspecified
             )
         }
     }
