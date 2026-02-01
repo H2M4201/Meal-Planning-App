@@ -87,26 +87,30 @@ fun ShoppingListScreen(
 
             Button(
                 onClick = {
-                    // Logic: Add the delta (Amount - LastUpdatedStock) to Stock
-//                    val itemsToUpdate = currentWeekItems.filter { it.Amount > it.LastUpdatedStock }
-//                    if (itemsToUpdate.isNotEmpty()) {
-//                        val stockItemsToAdd = itemsToUpdate.map { cartItem ->
-//                            // The delta amount is what needs to be added to stock
-//                            val delta = cartItem.Amount - cartItem.LastUpdatedStock
-//                            Stock(IngredientID = cartItem.IngredientID, Amount = delta)
-//                        }
-//                        // 1. Update Stock amounts
-//                        stockVm.addStockItems(stockItemsToAdd)
-//
-//                        // 2. Sync LastUpdatedStock = Amount in ShoppingCart so delta becomes 0
-//                        shoppingListVm.updateLastStockSyncAmount(itemsToUpdate)
-//                    }
+                    // 1. Identify items that haven't been pushed to stock yet
+                    val itemsToUpdate = currentWeekItems.filter { !it.isUpdatedToStock }
+
+                    if (itemsToUpdate.isNotEmpty()) {
+                        // 2. MODIFICATION: Call the optimized sync function
+                        // This function now handles summing amounts and updating existing rows
+                        stockVm.updateStockFromShoppingList(itemsToUpdate)
+
+                        // 3. Mark these items as "Updated to Stock" in the ShoppingCart
+                        itemsToUpdate.forEach { item ->
+                            shoppingListVm.updateShoppingCartItem(
+                                item.copy(isUpdatedToStock = true)
+                            )
+                        }
+                    }
                 },
-                enabled = currentWeekItems.isNotEmpty(),
+                enabled = currentWeekItems.any { !it.isUpdatedToStock },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 16.dp)
             ) {
+                val allSynced = currentWeekItems.isNotEmpty() &&
+                        currentWeekItems.all { it.isUpdatedToStock }
+                Text(if (allSynced) "All Items in Stock" else "Add Items to Stock")
             }
         }
 

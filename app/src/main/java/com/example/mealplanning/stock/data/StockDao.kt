@@ -5,12 +5,16 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface StockDao {
     @Insert(onConflict = OnConflictStrategy.Companion.REPLACE)
     suspend fun insert(stock: Stock)
+
+    @Update
+    suspend fun update(stock: Stock)
 
     @Delete
     suspend fun delete(stock: Stock)
@@ -20,4 +24,5 @@ interface StockDao {
 
     @Query("SELECT * FROM Stock WHERE IngredientID = :id LIMIT 1")
     suspend fun getStockById(id: Int): Stock?
+
 }

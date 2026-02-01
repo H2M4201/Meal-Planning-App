@@ -56,8 +56,8 @@ class StockViewModel(private val stockDao: StockDao) : ViewModel() {
                 val existingStock = stockDao.getStockById(cartItem.IngredientID)
 
                 if (existingStock != null) {
-                    // Ingredient exists: sum the current amount with the cart amount
-                    stockDao.insert(existingStock.copy(
+                    // MODIFICATION: Use explicit update for existing records
+                    stockDao.update(existingStock.copy(
                         Amount = existingStock.Amount + cartItem.Amount
                     ))
                 } else {
