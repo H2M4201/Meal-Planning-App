@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -103,18 +104,19 @@ fun CookDialog(
                 Spacer(Modifier.height(16.dp))
 
                 LazyColumn(modifier = Modifier.heightIn(max = 200.dp)) {
-                    // MODIFICATION 2: Iterate through the recipe's ingredients
-                    items(recipeIngredients, key = { it.IngredientID }) { detail ->                        // Find the corresponding master ingredient to get its Name and Unit
-                        val masterIngredient = masterIngredients.find { it.ID == detail.IngredientID }
-                        if (masterIngredient != null) {
+                    itemsIndexed(recipeIngredients, key = { index, detail -> "${detail.IngredientID}-$index" }) { _, detail ->
+                        masterIngredients.find { it.ID == detail.IngredientID }?.let { masterIngredient ->
                             IngredientRow(
                                 masterIngredient = masterIngredient,
-                                amount = detail.Amount, // Pass the amount directly
+                                amount = detail.Amount,
                                 onEdit = { editingDetail = detail },
-                                onDelete = { recipeIngredients.remove(detail) }                            )
+                                onDelete = { recipeIngredients.remove(detail) }
+                            )
                         }
                     }
                 }
+
+
 
                 TextButton(onClick = { showAddIngredientDialog = true }) {
                     Text("Add more ingredient")
@@ -159,14 +161,17 @@ fun CookDialog(
             onDismiss = { showAddIngredientDialog = false },
             onSave = { name, amount, unit ->
                 val existingIngredient = masterIngredients.find { it.Name.equals(name, ignoreCase = true) }
-                if (existingIngredient != null) {
+                val parsedAmount = amount.toIntOrNull()
+
+                if (existingIngredient != null && parsedAmount != null) {
                     val newDetail = MealPlanDetail(
                         MealPlanID = meal.mealPlan?.ID ?: 0,
                         IngredientID = existingIngredient.ID,
-                        Amount = amount.toIntOrNull() ?: 0
+                        Amount = parsedAmount
                     )
                     recipeIngredients.add(newDetail)
                 }
+                // if parsedAmount == null, skip adding
                 showAddIngredientDialog = false
             }
         )
@@ -181,10 +186,14 @@ fun CookDialog(
                 ingredientListVm = ingredientListVm,
                 onDismiss = { editingDetail = null },
                 onSave = { _, newAmount, _ ->
-                    val index = recipeIngredients.indexOfFirst { it.IngredientID == detailToEdit.IngredientID }
-                    if (index != -1) {
-                        recipeIngredients[index] = detailToEdit.copy(Amount = newAmount.toIntOrNull() ?: 0)
+                    val parsedAmount = newAmount.toIntOrNull()
+                    if (parsedAmount != null) {
+                        val index = recipeIngredients.indexOfFirst { it.IngredientID == detailToEdit.IngredientID }
+                        if (index != -1) {
+                            recipeIngredients[index] = detailToEdit.copy(Amount = parsedAmount)
+                        }
                     }
+                    // if parsedAmount == null, skip updating
                     editingDetail = null
                 }
             )

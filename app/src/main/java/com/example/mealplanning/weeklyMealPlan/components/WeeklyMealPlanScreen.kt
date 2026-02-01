@@ -1,5 +1,6 @@
 package com.example.mealplanning.weeklyMealPlan.components
 
+import androidx.activity.result.launch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -21,12 +22,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+//import androidx.preference.isNotEmpty
 import com.example.mealplanning.ingredientList.ViewModel.IngredientListViewModel
 import com.example.mealplanning.shareUI.components.AppTopBar
 import com.example.mealplanning.shoppingList.ViewModel.ShoppingListViewModel
 import com.example.mealplanning.weeklyMealPlan.data.MealPlan
 import com.example.mealplanning.weeklyMealPlan.data.MealPlanDetail
 import com.example.mealplanning.weeklyMealPlan.ViewModel.MealPlanViewModel
+import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
@@ -59,6 +62,7 @@ fun WeeklyMealPlanScreen(
     var showCookDialog by remember { mutableStateOf<UIMeal?>(null) }
 
     val dishesToCook by vm.getDishesToCook(startOfWeek).collectAsState()
+    val scope = rememberCoroutineScope()
 
 
     Scaffold(
@@ -80,11 +84,15 @@ fun WeeklyMealPlanScreen(
                 onUpdateShoppingList = {
                     val allDetails = weeklyMealPlans.values.flatten()
                     if (allDetails.isNotEmpty()) {
-                        // This now handles:
-                        // 1. Syncing LastCartUpdated in MealPlanDetail
-                        // 2. Calculating IngredientSummary
-                        // 3. Updating ShoppingCart with the delta
-                        vm.syncMealPlanIngredientsToCart(allDetails, startOfWeek, shoppingListVm)
+                        // Use the scope to launch the async work
+                        scope.launch {
+                            // This now WAITS for the DB to actually finish the calculation
+                            val ingredientSummaries = vm.getTotalIngredientsByWeek(startOfWeek)
+
+                            if (ingredientSummaries.isNotEmpty()) {
+                                shoppingListVm.updateShoppingListFromMealPlan(ingredientSummaries, startOfWeek)
+                            }
+                        }
                     }
                 }
             )

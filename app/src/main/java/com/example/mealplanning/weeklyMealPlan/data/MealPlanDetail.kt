@@ -26,12 +26,10 @@ data class MealPlanDetail(
     val MealPlanID: Int,
     val IngredientID: Int,
     val Amount: Int,
-    val LastCartUpdated: Int = 0, // New column
     val IsConsumed: Boolean = false // New column
 )
 
 data class IngredientSummary(
     val IngredientID: Int,
-    val TotalAmount: Int,
-    val TotalLastUpdated: Int
+    val TotalAmount: Int
 )

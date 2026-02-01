@@ -88,19 +88,19 @@ fun ShoppingListScreen(
             Button(
                 onClick = {
                     // Logic: Add the delta (Amount - LastUpdatedStock) to Stock
-                    val itemsToUpdate = currentWeekItems.filter { it.Amount > it.LastUpdatedStock }
-                    if (itemsToUpdate.isNotEmpty()) {
-                        val stockItemsToAdd = itemsToUpdate.map { cartItem ->
-                            // The delta amount is what needs to be added to stock
-                            val delta = cartItem.Amount - cartItem.LastUpdatedStock
-                            Stock(IngredientID = cartItem.IngredientID, Amount = delta)
-                        }
-                        // 1. Update Stock amounts
-                        stockVm.addStockItems(stockItemsToAdd)
-
-                        // 2. Sync LastUpdatedStock = Amount in ShoppingCart so delta becomes 0
-                        shoppingListVm.updateLastStockSyncAmount(itemsToUpdate)
-                    }
+//                    val itemsToUpdate = currentWeekItems.filter { it.Amount > it.LastUpdatedStock }
+//                    if (itemsToUpdate.isNotEmpty()) {
+//                        val stockItemsToAdd = itemsToUpdate.map { cartItem ->
+//                            // The delta amount is what needs to be added to stock
+//                            val delta = cartItem.Amount - cartItem.LastUpdatedStock
+//                            Stock(IngredientID = cartItem.IngredientID, Amount = delta)
+//                        }
+//                        // 1. Update Stock amounts
+//                        stockVm.addStockItems(stockItemsToAdd)
+//
+//                        // 2. Sync LastUpdatedStock = Amount in ShoppingCart so delta becomes 0
+//                        shoppingListVm.updateLastStockSyncAmount(itemsToUpdate)
+//                    }
                 },
                 enabled = currentWeekItems.isNotEmpty(),
                 modifier = Modifier

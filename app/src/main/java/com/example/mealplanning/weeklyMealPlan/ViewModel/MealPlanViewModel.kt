@@ -62,34 +62,13 @@ class MealPlanViewModel(
         }
     }
 
-    fun getTotalIngredientsByWeek(startOfWeek: LocalDate): StateFlow<List<IngredientSummary>> {
+    suspend fun getTotalIngredientsByWeek(startOfWeek: LocalDate): List<IngredientSummary> {
         val endOfWeek = startOfWeek.plusDays(6)
-        return mealPlanDao.getIngredientsForWeek(startOfWeek, endOfWeek)
-            .stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5000L),
-                initialValue = emptyList()
-            )
+        // .first() will wait for the database to emit the first result and then close the connection
+        return mealPlanDao.getIngredientsForWeek(startOfWeek, endOfWeek).first()
     }
 
-    fun syncMealPlanIngredientsToCart(
-        details: List<MealPlanDetail>, // Passed from Screen
-        startOfWeek: LocalDate,
-        shoppingListVm: ShoppingListViewModel
-    ) {
-        viewModelScope.launch {
-            // Step A: Mark the current state as "synced" by updating LastCartUpdated = Amount
-            // This must be done BEFORE we calculate the next delta
-            mealPlanDao.updateLastCartSyncAmount(details)
 
-            // Step B: Collect the latest totals (which now include the updated LastCartUpdated)
-            // We fetch one snapshot to pass to the shopping list
-            val ingredientSummaries = getTotalIngredientsByWeek(startOfWeek).first()
-
-            // Step C: Hand over the summaries to ShoppingList to calculate the delta
-            shoppingListVm.updateShoppingListFromMealPlan(ingredientSummaries, startOfWeek)
-        }
-    }
 
     fun getDishesToCook(startOfWeek: LocalDate): StateFlow<List<MealPlan>> {
         val endOfWeek = startOfWeek.plusDays(6)

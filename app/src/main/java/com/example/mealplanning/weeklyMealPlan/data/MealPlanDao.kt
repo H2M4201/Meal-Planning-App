@@ -27,22 +27,21 @@ interface MealPlanDao {
     @Query("""
     SELECT * FROM MealPlan 
     LEFT JOIN MealPlanDetail ON MealPlan.ID = MealPlanDetail.MealPlanID 
-    WHERE Date BETWEEN :startOfWeek AND :endOfWeek    """)
+    WHERE Date BETWEEN :startOfWeek AND :endOfWeek""")
     fun getMealPlanWithDetailsByWeek(
         startOfWeek: LocalDate,
         endOfWeek: LocalDate
     ): Flow<Map<MealPlan, List<MealPlanDetail>>>
 
     @Query("""
-    SELECT 
-        md.IngredientID, 
-        SUM(md.Amount) AS TotalAmount, 
-        SUM(md.LastCartUpdated) AS TotalLastUpdated
-    FROM MealPlanDetail md
-    INNER JOIN MealPlan mp ON md.MealPlanID = mp.ID
-    WHERE mp.Date BETWEEN :startOfWeek AND :endOfWeek
-    GROUP BY md.IngredientID
-""")
+        SELECT 
+            md.IngredientID, 
+            SUM(md.Amount) AS TotalAmount
+        FROM MealPlanDetail md
+        INNER JOIN MealPlan mp ON md.MealPlanID = mp.ID
+        WHERE mp.Date BETWEEN :startOfWeek AND :endOfWeek
+        GROUP BY md.IngredientID
+    """)
     fun getIngredientsForWeek(
         startOfWeek: LocalDate,
         endOfWeek: LocalDate
@@ -51,15 +50,4 @@ interface MealPlanDao {
     suspend fun updateMealPlan(mealPlan: MealPlan)
     @Update
     suspend fun updateMealPlanDetail(detail: MealPlanDetail)
-
-    @Query("UPDATE MealPlanDetail SET LastCartUpdated = Amount WHERE MealPlanID = :mealPlanId AND IngredientID = :ingredientId")
-    suspend fun syncCartAmount(mealPlanId: Int, ingredientId: Int)
-
-    @Transaction
-    suspend fun updateLastCartSyncAmount(details: List<MealPlanDetail>) {
-        details.forEach { detail ->
-            // Using raw query for performance or standard update
-            syncCartAmount(detail.MealPlanID, detail.IngredientID)
-        }
-    }
 }

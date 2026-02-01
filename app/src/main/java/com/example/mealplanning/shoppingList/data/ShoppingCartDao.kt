@@ -20,14 +20,4 @@ interface ShoppingCartDao {
 
     @Update
     suspend fun update(shoppingCart: ShoppingCart)
-
-    @Query("UPDATE ShoppingCart SET LastUpdatedStock = Amount WHERE ID = :id")
-    suspend fun saveLastUpdatedStock(id: Int)
-
-    @Transaction
-    suspend fun updateLastStockSyncAmountLoop(items: List<ShoppingCart>) {
-        items.forEach { item ->
-            saveLastUpdatedStock(item.ID)
-        }
-    }
 }
