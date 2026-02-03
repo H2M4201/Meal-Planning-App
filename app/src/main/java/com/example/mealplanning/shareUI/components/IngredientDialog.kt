@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.mealplanning.ingredientList.data.Ingredient
 import com.example.mealplanning.ingredientList.ViewModel.IngredientListViewModel
@@ -169,10 +170,35 @@ fun IngredientSearchDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { onIngredientSelected(ingredient) }
-                            .padding(vertical = 8.dp)
+                            .padding(vertical = 4.dp)
                     ) {
-                        Text(text = ingredient.Name, modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
-                        Text(text = ingredient.Unit, modifier = Modifier.weight(1f))
+                        Surface(
+                            modifier = Modifier.weight(0.8f),
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFFF0703C)
+                        ) {
+                            Text(
+                                text = ingredient.Name,
+                                modifier = Modifier.padding(8.dp),
+                                color = Color.Black,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                maxLines = 1
+                            )
+                        }
+
+//                        Surface(
+//                            modifier = Modifier.width(75.dp),
+//                            shape = RoundedCornerShape(8.dp),
+//                            color = Color(0xFFF0703C)
+//                        ) {
+//                            Text(
+//                                text = ingredient.Unit,
+//                                modifier = Modifier.padding(8.dp),
+//                                color = Color.Black,
+//                                fontSize = 13.sp
+//                            )
+//                        }
                     }
                 }
             }

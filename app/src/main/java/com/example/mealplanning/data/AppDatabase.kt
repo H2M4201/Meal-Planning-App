@@ -31,7 +31,7 @@ import com.example.mealplanning.stock.data.Stock
         Recipe::class,
         RecipeDetail::class
     ],
-    version = 5, // Start with version 1 for the new schema
+    version = 6, // Start with version 1 for the new schema
     exportSchema = true
 )
 @TypeConverters(Converters::class) // This handles the LocalDate conversion
@@ -45,16 +45,23 @@ abstract class AppDatabase : RoomDatabase() {
 
     companion object {
 
-        val MIGRATION = object : Migration(4, 5) {
+        val MIGRATION = object : Migration(5, 6) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE ShoppingCart ADD COLUMN isUpdatedToStock INTEGER NOT NULL DEFAULT 0")
-                try {
-                    db.execSQL("ALTER TABLE MealPlanDetail DROP COLUMN LastCartUpdated")
-                    db.execSQL("ALTER TABLE ShoppingCart DROP COLUMN LastUpdatedStock")
-                } catch (e: Exception) {
-                    // Fallback for older Android versions where DROP COLUMN isn't supported
-                    // If this fails, the column stays but won't be used by the Room Entity
-                }
+                db.execSQL("""
+                    ALTER TABLE `Recipe` ADD COLUMN `isActive` INTEGER NOT NULL DEFAULT 1
+                """)
+
+                // Create RecipeDetail Table with Foreign Keys
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `RecipeDetail` (
+                        `RecipeID` INTEGER NOT NULL, 
+                        `IngredientID` INTEGER NOT NULL, 
+                        `Amount` INTEGER NOT NULL, 
+                        PRIMARY KEY(`RecipeID`, `IngredientID`), 
+                        FOREIGN KEY(`RecipeID`) REFERENCES `Recipe`(`ID`) ON UPDATE NO ACTION ON DELETE CASCADE, 
+                        FOREIGN KEY(`IngredientID`) REFERENCES `ingredients`(`ID`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                """)
             }
         }
 

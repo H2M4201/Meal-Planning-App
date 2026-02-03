@@ -33,7 +33,8 @@ fun MainScreen(
     onNavigateToWeeklyPlan: () -> Unit,
     onNavigateToUpdateStock: () -> Unit,
     onNavigateToShoppingList: () -> Unit,
-    onNavigateToIngredientList: () -> Unit// Add new parameter
+    onNavigateToIngredientList: () -> Unit,
+    onNavigateToRecipe: () -> Unit // Add new parameter
 ) {
     Column(
         modifier = Modifier
@@ -64,7 +65,8 @@ fun MainScreen(
         AppButton(text = "Ingredient List", onClick = onNavigateToIngredientList)
         Spacer(modifier = Modifier.height(16.dp))
 
-        AppButton(text = "Recipe", onClick = { /* TODO: Navigate to Recipe screen */ })
+        AppButton(text = "Recipe", onClick = onNavigateToRecipe)
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
@@ -104,7 +106,8 @@ fun DefaultPreview() {
                 onNavigateToWeeklyPlan = {},
                 onNavigateToUpdateStock = {},
                 onNavigateToShoppingList = {}, // Update preview
-                onNavigateToIngredientList = {}
+                onNavigateToIngredientList = {},
+                onNavigateToRecipe = {}
             )
         }
     }

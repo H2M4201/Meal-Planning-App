@@ -1,4 +1,3 @@
-// In data/RecipeDetail.kt
 package com.example.mealplanning.recipe.data
 
 import androidx.room.Entity

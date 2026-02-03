@@ -18,6 +18,9 @@ import com.example.mealplanning.ingredientList.IngredientListScreen
 import com.example.mealplanning.ingredientList.ViewModel.IngredientListViewModel
 import com.example.mealplanning.ingredientList.ViewModel.IngredientListViewModelFactory
 import com.example.mealplanning.landingPage.MainScreen
+import com.example.mealplanning.recipe.RecipeScreen
+import com.example.mealplanning.recipe.ViewModel.RecipeViewModel
+import com.example.mealplanning.recipe.ViewModel.RecipeViewModelFactory
 import com.example.mealplanning.shareUI.theme.MealPlanningTheme
 import com.example.mealplanning.shoppingList.ShoppingListScreen
 import com.example.mealplanning.shoppingList.ViewModel.ShoppingListViewModel
@@ -28,6 +31,7 @@ import com.example.mealplanning.stock.ViewModel.StockViewModelFactory
 import com.example.mealplanning.weeklyMealPlan.ViewModel.MealPlanViewModel
 import com.example.mealplanning.weeklyMealPlan.WeeklyMealPlanEntry
 import com.example.mealplanning.weeklyMealPlan.ViewModel.MealPlanViewModelFactory
+
 
 
 class MainActivity : ComponentActivity() {
@@ -54,11 +58,17 @@ fun AppNavigation() {
 
     val ingredientListViewModel: IngredientListViewModel = viewModel(factory = IngredientListViewModelFactory(db.ingredientDao()))
     val stockViewModel: StockViewModel = viewModel(factory = StockViewModelFactory(db.stockDao()))
-    val shoppingListViewModel: ShoppingListViewModel = viewModel(factory = ShoppingListViewModelFactory(db.shoppingCartDao()))
+    val shoppingListViewModel: ShoppingListViewModel = viewModel(
+        factory = ShoppingListViewModelFactory(db.shoppingCartDao()))
     val mealPlanViewModel: MealPlanViewModel = viewModel(
         factory = MealPlanViewModelFactory(
             mealPlanDao = db.mealPlanDao(),
             ingredientDao = db.ingredientDao()
+        )
+    )
+    val recipeViewModel: RecipeViewModel = viewModel(
+        factory = RecipeViewModelFactory(
+            recipeDao = db.recipeDao()
         )
     )
 
@@ -68,7 +78,8 @@ fun AppNavigation() {
                 onNavigateToWeeklyPlan = { navController.navigate("weeklyPlan") },
                 onNavigateToUpdateStock = { navController.navigate("updateStock") },
                 onNavigateToShoppingList = { navController.navigate("shoppingList") },
-                onNavigateToIngredientList = { navController.navigate("ingredientList") }
+                onNavigateToIngredientList = { navController.navigate("ingredientList") },
+                onNavigateToRecipe = { navController.navigate("recipe") }
             )
         }
         composable("weeklyPlan") {
@@ -99,6 +110,13 @@ fun AppNavigation() {
                 onNavigateUp = { navController.navigateUp() },
                 IngredientVm = ingredientListViewModel,
                 StockVm = stockViewModel
+            )
+        }
+        composable("recipe") {
+            RecipeScreen(
+                onNavigateUp = { navController.navigateUp() },
+                recipeVm = recipeViewModel,
+                ingredientListVm = ingredientListViewModel
             )
         }
     }
