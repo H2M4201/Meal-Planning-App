@@ -8,6 +8,7 @@ import com.example.mealplanning.recipe.data.RecipeDao
 import com.example.mealplanning.recipe.data.RecipeDetail
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -20,13 +21,8 @@ class RecipeViewModel(private val recipeDao: RecipeDao) : ViewModel() {
             initialValue = emptyList()
         )
 
-    fun getRecipeDetails(recipeId: Int): StateFlow<List<RecipeDetail>> {
-        return recipeDao.getRecipeDetails(recipeId)
-            .stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5000L),
-                initialValue = emptyList()
-            )
+    suspend fun getRecipeDetails(recipeId: Int): List<RecipeDetail> {
+        return recipeDao.getRecipeDetails(recipeId).first()
     }
 
     fun saveRecipe(recipe: Recipe, details: List<RecipeDetail>) {

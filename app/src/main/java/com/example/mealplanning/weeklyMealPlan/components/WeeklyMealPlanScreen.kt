@@ -185,15 +185,28 @@ fun WeeklyMealPlanScreen(
             },
             onSetEatOut = {
                 val isNew = uiMeal.mealPlan == null
-                val eatOutMealPlan = MealPlan(
-                    ID = uiMeal.mealPlan?.ID ?: 0,
-                    Date = uiMeal.date,
-                    MealType = uiMeal.mealType,
-                    Status = 0,
-                    MealName = "Eat Out"
-                )
-                vm.saveMealPlan(eatOutMealPlan, emptyList(), isNew)
-                showCookDialog = null
+
+                scope.launch {
+                    // 1. If it's an existing "Cook" meal, delete it first to clear details and the old ID
+                    if (!isNew && uiMeal.mealPlan.Status == 1) {
+                        vm.removeMealPlanSync(uiMeal.mealPlan)
+                    }
+
+                    // 2. Create the new Eat Out plan
+                    // We use ID = 0 to ensure a fresh insert if we deleted the old one
+                    val eatOutMealPlan = MealPlan(
+                        ID = 0,
+                        Date = uiMeal.date,
+                        MealType = uiMeal.mealType,
+                        Status = 0, // Eat Out
+                        MealName = "Eat Out"
+                    )
+
+                    // 3. Save as a new meal plan with no details
+                    vm.saveMealPlan(eatOutMealPlan, emptyList(), isNew = true)
+
+                    showCookDialog = null
+                }
             }
         )
     }

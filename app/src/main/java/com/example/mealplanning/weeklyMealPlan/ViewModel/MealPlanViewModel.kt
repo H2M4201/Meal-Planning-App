@@ -54,8 +54,10 @@ class MealPlanViewModel(
         }
     }
 
-
-    fun removeMealPlan(mealPlan: MealPlan) {
+    suspend fun removeMealPlanSync(mealPlan: MealPlan) {
+        mealPlanDao.deleteMealPlan(mealPlan)
+    }
+     fun removeMealPlan(mealPlan: MealPlan) {
         // This will also remove the details due to the CASCADE onDelete
         viewModelScope.launch {
             mealPlanDao.deleteMealPlan(mealPlan)

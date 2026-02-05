@@ -43,10 +43,10 @@ fun RecipeDetailDialog(
 
     LaunchedEffect(recipe) {
         if (!isNew) {
-            recipeVm.getRecipeDetails(recipe.ID).collect { recipeDetails ->
-                details.clear()
-                details.addAll(recipeDetails)
-            }
+            // Since getRecipeDetails is now a suspend function returning a List
+            val recipeDetails = recipeVm.getRecipeDetails(recipe.ID)
+            details.clear()
+            details.addAll(recipeDetails)
         }
     }
 

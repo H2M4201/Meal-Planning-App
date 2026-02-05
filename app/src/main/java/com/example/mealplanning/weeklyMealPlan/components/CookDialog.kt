@@ -229,24 +229,27 @@ fun CookDialog(
                     dishName = selectedRecipe.Name
 
                     // 2. Fetch recipe details
-                    val recipeDetails = recipeVm.getRecipeDetails(selectedRecipe.ID).first()
-
+                    val recipeDetails = recipeVm.getRecipeDetails(selectedRecipe.ID)
                     // 3. Merge ingredients
-                    recipeDetails.forEach { detail ->
-                        val existingIndex = recipeIngredients.indexOfFirst { it.IngredientID == detail.IngredientID }
-                        if (existingIndex != -1) {
-                            // Ingredient exists: sum the amounts
-                            val existing = recipeIngredients[existingIndex]
-                            recipeIngredients[existingIndex] = existing.copy(Amount = existing.Amount + detail.Amount)
-                        } else {
-                            // New ingredient: add to list
-                            recipeIngredients.add(
-                                MealPlanDetail(
-                                    MealPlanID = meal.mealPlan?.ID ?: 0,
-                                    IngredientID = detail.IngredientID,
-                                    Amount = detail.Amount
+                    if (recipeDetails.isNotEmpty()) {
+                        recipeDetails.forEach { detail ->
+                            val existingIndex = recipeIngredients.indexOfFirst {
+                                it.IngredientID == detail.IngredientID
+                            }
+                            if (existingIndex != -1) {
+                                val existing = recipeIngredients[existingIndex]
+                                recipeIngredients[existingIndex] = existing.copy(
+                                    Amount = existing.Amount + detail.Amount
                                 )
-                            )
+                            } else {
+                                recipeIngredients.add(
+                                    MealPlanDetail(
+                                        MealPlanID = meal.mealPlan?.ID ?: 0,
+                                        IngredientID = detail.IngredientID,
+                                        Amount = detail.Amount
+                                    )
+                                )
+                            }
                         }
                     }
                 }
