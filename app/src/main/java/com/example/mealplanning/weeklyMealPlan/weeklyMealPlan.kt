@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mealplanning.ingredientList.ViewModel.IngredientListViewModel
+import com.example.mealplanning.recipe.ViewModel.RecipeViewModel
 import com.example.mealplanning.shoppingList.ViewModel.ShoppingListViewModel
 import com.example.mealplanning.shareUI.theme.MealPlanningTheme
 import com.example.mealplanning.weeklyMealPlan.ViewModel.MealPlanViewModel
@@ -17,13 +18,15 @@ fun WeeklyMealPlanEntry(
     onNavigateUp: () -> Unit,
     vm: MealPlanViewModel,
     shoppingListVm: ShoppingListViewModel,
-    ingredientListVm: IngredientListViewModel
+    ingredientListVm: IngredientListViewModel,
+    recipeVm: RecipeViewModel
 ) {
     WeeklyMealPlanScreen(
         onNavigateUp = onNavigateUp,
         vm = vm,
         shoppingListVm = shoppingListVm,
-        ingredientListVm = ingredientListVm
+        ingredientListVm = ingredientListVm,
+        recipeVm =  recipeVm
     )
 }
 
@@ -37,7 +40,8 @@ fun WeeklyMealPlanScreenPreview() {
             onNavigateUp = {},
             vm = viewModel(), // This will be an empty VM for preview
             shoppingListVm = viewModel(),
-            ingredientListVm = viewModel()
+            ingredientListVm = viewModel(),
+            recipeVm = viewModel()
         )
     }
 }

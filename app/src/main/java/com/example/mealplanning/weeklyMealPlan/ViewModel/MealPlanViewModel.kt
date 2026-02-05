@@ -70,19 +70,20 @@ class MealPlanViewModel(
 
 
 
-    fun getDishesToCook(startOfWeek: LocalDate): StateFlow<List<MealPlan>> {
+    fun getDishesToCook(startOfWeek: LocalDate): StateFlow<Map<LocalDate, List<MealPlan>>> {
         val endOfWeek = startOfWeek.plusDays(6)
         return mealPlanDao.getMealPlanWithDetailsByWeek(startOfWeek, endOfWeek)
             .map { map ->
                 map.keys
-                    .filter { it.Status != 0 }
+                    .filter { it.Status != 0 } // Filter out "Eat Out"
                     .sortedWith(compareBy({ it.Date }, { it.MealType }))
+                    .groupBy { it.Date } // Grouping happens HERE
             }
-            .distinctUntilChanged() // Prevents emissions if the list content is the same
+            .distinctUntilChanged() // Crucial: prevents blinking if data is identical
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5000L),
-                initialValue = emptyList()
+                initialValue = emptyMap()
             )
     }
 

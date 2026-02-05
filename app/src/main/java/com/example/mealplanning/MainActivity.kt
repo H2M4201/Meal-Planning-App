@@ -87,7 +87,8 @@ fun AppNavigation() {
                 onNavigateUp = { navController.navigateUp() },
                 vm = mealPlanViewModel,
                 shoppingListVm = shoppingListViewModel,
-                ingredientListVm = ingredientListViewModel
+                ingredientListVm = ingredientListViewModel,
+                recipeVm = recipeViewModel
             )
         }
         composable("updateStock") {

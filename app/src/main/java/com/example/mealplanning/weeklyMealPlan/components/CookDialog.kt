@@ -1,7 +1,10 @@
 package com.example.mealplanning.weeklyMealPlan.components
 
+import androidx.activity.result.launch
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.forEach
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -35,7 +38,11 @@ import com.example.mealplanning.ingredientList.data.Ingredient // CORRECTED IMPO
 import com.example.mealplanning.weeklyMealPlan.data.MealPlan
 import com.example.mealplanning.weeklyMealPlan.data.MealPlanDetail
 import com.example.mealplanning.ingredientList.ViewModel.IngredientListViewModel
+import com.example.mealplanning.recipe.ViewModel.RecipeViewModel
+import com.example.mealplanning.recipe.data.Recipe
 import com.example.mealplanning.shareUI.components.IngredientDialog
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import java.time.format.DateTimeFormatter
 import kotlin.collections.toTypedArray
 
@@ -43,6 +50,7 @@ import kotlin.collections.toTypedArray
 fun CookDialog(
     meal: UIMeal, // Use the UIMeal wrapper class
     ingredientListVm: IngredientListViewModel,
+    recipeVm: RecipeViewModel,
     onDismiss: () -> Unit,
     // MODIFICATION: onSave now returns the MealPlan and its details
     onSave: (mealPlan: MealPlan, details: List<MealPlanDetail>) -> Unit,
@@ -55,10 +63,12 @@ fun CookDialog(
      // This holds the ingredients for the current recipe being edited
      val recipeIngredients = remember { mutableStateListOf(*meal.details.toTypedArray()) }
      val masterIngredients by ingredientListVm.masterIngredients.collectAsState()
+    val scope = rememberCoroutineScope() // Needed for async recipe fetch
 
      var showAddIngredientDialog by remember { mutableStateOf(false) }
      var editingDetail by remember { mutableStateOf<MealPlanDetail?>(null) }
      val dateFormatter = DateTimeFormatter.ofPattern("MMM dd")
+    var showRecipeSearchDialog by remember { mutableStateOf(false) } // MODIFICATION: New state
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -82,10 +92,19 @@ fun CookDialog(
                 OutlinedTextField(
                     value = "",
                     onValueChange = {},
-                    label = { Text("Search saved formula") },
+                    label = { Text("Search saved recipe") },
                     shape = RoundedCornerShape(50),
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showRecipeSearchDialog = true }, // Trigger dialog
+                    readOnly = true,
+                    enabled = false,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        disabledBorderColor = MaterialTheme.colorScheme.onSurface,
+                        disabledLabelColor = MaterialTheme.colorScheme.onSurface,
+                        disabledLeadingIconColor = MaterialTheme.colorScheme.onSurface
+                    )
                 )
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
@@ -199,6 +218,42 @@ fun CookDialog(
             )
         }
     }
+
+    if (showRecipeSearchDialog) {
+        RecipeSearchDialog(
+            recipeVm = recipeVm,
+            onDismiss = { showRecipeSearchDialog = false },
+            onRecipeSelected = { selectedRecipe ->
+                scope.launch {
+                    // 1. Fill dish name
+                    dishName = selectedRecipe.Name
+
+                    // 2. Fetch recipe details
+                    val recipeDetails = recipeVm.getRecipeDetails(selectedRecipe.ID).first()
+
+                    // 3. Merge ingredients
+                    recipeDetails.forEach { detail ->
+                        val existingIndex = recipeIngredients.indexOfFirst { it.IngredientID == detail.IngredientID }
+                        if (existingIndex != -1) {
+                            // Ingredient exists: sum the amounts
+                            val existing = recipeIngredients[existingIndex]
+                            recipeIngredients[existingIndex] = existing.copy(Amount = existing.Amount + detail.Amount)
+                        } else {
+                            // New ingredient: add to list
+                            recipeIngredients.add(
+                                MealPlanDetail(
+                                    MealPlanID = meal.mealPlan?.ID ?: 0,
+                                    IngredientID = detail.IngredientID,
+                                    Amount = detail.Amount
+                                )
+                            )
+                        }
+                    }
+                }
+                showRecipeSearchDialog = false
+            }
+        )
+    }
 }
 
 // Helper function to get meal type name
@@ -278,5 +333,45 @@ fun DialogButton(text: String, onClick: () -> Unit, color: Color = Color.Gray) {
         colors = ButtonDefaults.buttonColors(containerColor = color)
     ) {
         Text(text)
+    }
+}
+
+@Composable
+fun RecipeSearchDialog(
+    recipeVm: RecipeViewModel,
+    onDismiss: () -> Unit,
+    onRecipeSelected: (Recipe) -> Unit
+) {
+    val recipes by recipeVm.allRecipes.collectAsState()
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier.heightIn(max = 500.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF2C2C2C)),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Select a Recipe", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(recipes) { recipe ->
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onRecipeSelected(recipe) },
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFFF0703C)
+                        ) {
+                            Text(
+                                text = recipe.Name,
+                                modifier = Modifier.padding(12.dp),
+                                color = Color.Black,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }

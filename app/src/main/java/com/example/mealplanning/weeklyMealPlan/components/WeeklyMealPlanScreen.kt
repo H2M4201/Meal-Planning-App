@@ -33,6 +33,7 @@ import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
+import com.example.mealplanning.recipe.ViewModel.RecipeViewModel // ADD THIS
 
 // This is the new data class that will represent a cell in our UI.
 // It holds the MealPlan from the DB and its associated details.
@@ -50,7 +51,8 @@ fun WeeklyMealPlanScreen(
     onNavigateUp: () -> Unit,
     vm: MealPlanViewModel,
     shoppingListVm: ShoppingListViewModel,
-    ingredientListVm: IngredientListViewModel
+    ingredientListVm: IngredientListViewModel,
+    recipeVm: RecipeViewModel
 ) {
     // --- STATE MANAGEMENT ---
     var startOfWeek by remember { mutableStateOf(LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.SATURDAY))) }
@@ -60,9 +62,10 @@ fun WeeklyMealPlanScreen(
     val weeklyMealPlans by vm.getMealPlanWithDetailsByWeek(startOfWeek).collectAsState()
     var showMealChoiceDialog by remember { mutableStateOf<UIMeal?>(null) }
     var showCookDialog by remember { mutableStateOf<UIMeal?>(null) }
-
-    val dishesToCook by vm.getDishesToCook(startOfWeek).collectAsState()
+    val dishesToCook by remember(startOfWeek) { vm.getDishesToCook(startOfWeek) }.collectAsState()
     val scope = rememberCoroutineScope()
+
+    var showDishesDialog by remember { mutableStateOf(false) }
 
 
     Scaffold(
@@ -97,7 +100,7 @@ fun WeeklyMealPlanScreen(
                 }
             )
             MealPlanGrid(
-                modifier = Modifier.weight(1f),
+//                modifier = Modifier.weight(1f),
                 weekDates = weekDates,
                 mealPlans = weeklyMealPlans,
                 onCellClick = { uiMeal ->
@@ -112,10 +115,14 @@ fun WeeklyMealPlanScreen(
                 }
             )
 
-            DishSummaryList(
-                modifier = Modifier.weight(1f),
-                dishes = dishesToCook
-            )
+            Button(
+                onClick = { showDishesDialog = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+            ) {
+                Text("Show Dishes to Cook")
+            }
 
             Row(
                 modifier = Modifier
@@ -163,6 +170,7 @@ fun WeeklyMealPlanScreen(
         CookDialog(
             meal = uiMeal,
             ingredientListVm = ingredientListVm,
+            recipeVm = recipeVm,
             onDismiss = { showCookDialog = null },
             onSave = { mealPlan, details ->
                 val isNew = uiMeal.mealPlan == null
@@ -187,6 +195,13 @@ fun WeeklyMealPlanScreen(
                 vm.saveMealPlan(eatOutMealPlan, emptyList(), isNew)
                 showCookDialog = null
             }
+        )
+    }
+
+    if (showDishesDialog) {
+        DishSummaryDialog(
+            dishes = dishesToCook,
+            onDismiss = { showDishesDialog = false }
         )
     }
 }
@@ -254,6 +269,4 @@ fun TopControls(
             )
         }
     }
-
-
 }
