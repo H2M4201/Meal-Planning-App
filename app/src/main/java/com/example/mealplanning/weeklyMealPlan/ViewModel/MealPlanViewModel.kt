@@ -37,18 +37,25 @@ class MealPlanViewModel(
     fun saveMealPlan(mealPlan: MealPlan, details: List<MealPlanDetail>, isNew: Boolean) {
         viewModelScope.launch {
             if (isNew) {
-                // New Logic: Insert and get new ID
+                // Logic for a brand new MealPlan entry
                 val mealPlanId = mealPlanDao.insertMealPlan(mealPlan)
                 details.forEach { detail ->
                     mealPlanDao.insertMealPlanDetail(detail.copy(MealPlanID = mealPlanId.toInt()))
                 }
             } else {
-                // Update Logic: Explicit Update for the main record
+                // Logic for updating an existing MealPlan (or converting Eat Out to Cook)
                 mealPlanDao.updateMealPlan(mealPlan)
 
-                // 2. Insert the current list of details
+                // 1. DELETE all existing details for this meal first.
+                // This ensures rows removed in the UI are actually gone from the DB,
+                // and clears the way for a fresh set of details.
+                mealPlanDao.deleteDetailsForMealPlan(mealPlan.ID)
+
+                // 2. INSERT the current list of details as fresh rows.
+                // Since they are new rows for this MealPlanID, we use insert instead of update.
                 details.forEach { detail ->
-                    mealPlanDao.updateMealPlanDetail(detail)
+                    // Ensure the detail is linked to the correct MealPlan ID
+                    mealPlanDao.insertMealPlanDetail(detail.copy(MealPlanID = mealPlan.ID))
                 }
             }
         }

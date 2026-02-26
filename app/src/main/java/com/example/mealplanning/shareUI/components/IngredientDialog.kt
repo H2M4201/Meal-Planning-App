@@ -118,10 +118,11 @@ fun IngredientDialog(
                     Button(
                         onClick = {
                             if (itemName.isNotBlank()) {
-                                if (!isMasterIngredient) {
-                                    onSave(itemName, itemAmount, itemUnit)
-                                }
-                                onSave(itemName, "", itemUnit)
+                                // Determine the amount to send: if it's a master ingredient, send empty,
+                                // otherwise send the typed amount.
+                                val amountToSend = if (isMasterIngredient) "" else itemAmount
+
+                                onSave(itemName, amountToSend, itemUnit)
                             }
                         },
                         shape = RoundedCornerShape(50),
@@ -175,7 +176,7 @@ fun IngredientSearchDialog(
                         Surface(
                             modifier = Modifier.weight(0.8f),
                             shape = RoundedCornerShape(8.dp),
-                            color = Color(0xFFF0703C)
+                            color = Color.LightGray
                         ) {
                             Text(
                                 text = ingredient.Name,

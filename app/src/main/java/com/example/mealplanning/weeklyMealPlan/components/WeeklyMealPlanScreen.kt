@@ -86,11 +86,19 @@ fun WeeklyMealPlanScreen(
                 onNextWeek = { startOfWeek = startOfWeek.plusWeeks(1) },
                 onUpdateShoppingList = {
                     val allDetails = weeklyMealPlans.values.flatten()
+
+                    // PRINT TO LOGCAT
+                    println("DEBUG_MEAL: weeklyMealPlans: $weeklyMealPlans")
+                    println("DEBUG_MEAL: allDetails: ${allDetails}")
+                    allDetails.forEach { detail ->
+                        println("DEBUG_MEAL: Detail - IngredientID: ${detail.IngredientID}, Amount: ${detail.Amount}")
+                    }
+
                     if (allDetails.isNotEmpty()) {
-                        // Use the scope to launch the async work
                         scope.launch {
-                            // This now WAITS for the DB to actually finish the calculation
                             val ingredientSummaries = vm.getTotalIngredientsByWeek(startOfWeek)
+                            // Print summaries as well
+                            println("DEBUG_MEAL: Summaries size: ${ingredientSummaries.size}")
 
                             if (ingredientSummaries.isNotEmpty()) {
                                 shoppingListVm.updateShoppingListFromMealPlan(ingredientSummaries, startOfWeek)
@@ -173,8 +181,8 @@ fun WeeklyMealPlanScreen(
             recipeVm = recipeVm,
             onDismiss = { showCookDialog = null },
             onSave = { mealPlan, details ->
-                val isNew = uiMeal.mealPlan == null
-                vm.saveMealPlan(mealPlan, details, isNew)
+                val isEmpty = uiMeal.mealPlan == null
+                vm.saveMealPlan(mealPlan, details, isEmpty)
                 showCookDialog = null
             },
             onRemove = {

@@ -37,12 +37,12 @@ fun StockScreen(
     vm: StockViewModel,
     ingredientListVm: IngredientListViewModel
 ) {
-    val stockItems by vm.stockItems.collectAsState()
+    val availableStock by vm.availableStockItems.collectAsState()
     val masterIngredients by ingredientListVm.masterIngredients.collectAsState()
 
     StockScreenContent(
         onNavigateUp = onNavigateUp,
-        stockItems = stockItems,
+        stockItems = availableStock,
         masterIngredients = masterIngredients,
         onAddStockItem = { ingredientId, amount ->
             val newStockItem = Stock(IngredientID = ingredientId, Amount = amount)
@@ -122,19 +122,19 @@ fun StockScreenContent(
         }
     }
 
-    if (showAddDialog) {
-        IngredientDialog(
-            ingredientListVm = ingredientListVm,
-            onDismiss = { showAddDialog = false },
-            onSave = { name, amount, unit ->
-                val ingredient = masterIngredients.find { it.Name == name && it.Unit == unit }
-                if (ingredient != null) {
-                    onAddStockItem(ingredient.ID, amount.toIntOrNull() ?: 0)
-                }
-                showAddDialog = false
-            }
-        )
-    }
+//    if (showAddDialog) {
+//        IngredientDialog(
+//            ingredientListVm = ingredientListVm,
+//            onDismiss = { showAddDialog = false },
+//            onSave = { name, amount, unit ->
+//                val ingredient = masterIngredients.find { it.Name == name && it.Unit == unit }
+//                if (ingredient != null) {
+//                    onAddStockItem(ingredient.ID, amount.toIntOrNull() ?: 0)
+//                }
+//                showAddDialog = false
+//            }
+//        )
+//    }
 
     editingItem?.let { itemToEdit ->
         val ingredient = masterIngredients.find { it.ID == itemToEdit.IngredientID }
@@ -147,6 +147,7 @@ fun StockScreenContent(
                 isMasterIngredient = false,
                 onDismiss = { editingItem = null },
                 onSave = { _, amount, _ ->
+                    println("DEBUG: Amount is $amount")
                     onUpdateStockItem(itemToEdit.copy(Amount = amount.toIntOrNull() ?: 0))
                     editingItem = null
                 }

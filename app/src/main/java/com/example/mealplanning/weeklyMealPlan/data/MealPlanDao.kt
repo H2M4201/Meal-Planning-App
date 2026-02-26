@@ -23,6 +23,11 @@ interface MealPlanDao {
     @Delete
     suspend fun deleteMealPlan(mealPlan: MealPlan)
 
+    // File: weeklyMealPlan/data/MealPlanDao.kt
+
+    @Query("DELETE FROM MealPlanDetail WHERE MealPlanID = :mealPlanId")
+    suspend fun deleteDetailsForMealPlan(mealPlanId: Int)
+
     @Transaction
     @Query("""
     SELECT * FROM MealPlan 

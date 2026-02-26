@@ -21,6 +21,13 @@ class StockViewModel(private val stockDao: StockDao) : ViewModel() {
             initialValue = emptyList()
         )
 
+    val availableStockItems: StateFlow<List<Stock>> = stockDao.getAllAvailableStock()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000L),
+            initialValue = emptyList()
+        )
+
     fun addNewStock(ingredientId: Int) {
         viewModelScope.launch {
             stockDao.insert(Stock(IngredientID = ingredientId, Amount = 0))

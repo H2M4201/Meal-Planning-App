@@ -124,6 +124,7 @@ fun ShoppingListScreen(
                     isMasterIngredient = false,
                     onDismiss = { editingItem = null },
                     onSave = { _, amount, _ ->
+                        println("DEBUG: Amount is $amount")
                         shoppingListVm.updateShoppingCartItem(itemToEdit.copy(Amount = amount.toIntOrNull() ?: 0))
                         editingItem = null
                     }
