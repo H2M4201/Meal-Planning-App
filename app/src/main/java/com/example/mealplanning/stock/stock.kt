@@ -44,14 +44,13 @@ fun StockScreen(
         onNavigateUp = onNavigateUp,
         stockItems = availableStock,
         masterIngredients = masterIngredients,
-        onAddStockItem = { ingredientId, amount ->
-            val newStockItem = Stock(IngredientID = ingredientId, Amount = amount)
-            vm.addStockItems(listOf(newStockItem))
-        },
         onUpdateStockItem = { stockItem -> vm.updateStockItem(stockItem) },
         onRemoveStockItem = { stockItem -> vm.removeStockItem(stockItem) },
+        onClearStock = { vm.clearStock() },
         ingredientListVm = ingredientListVm // Still needed for the dialog's search
     )
+
+    // Add to StockScreenContent's TopControls or Column
 }
 
 // MODIFICATION 2: The "Dumb" Composable that only knows how to display data
@@ -61,80 +60,79 @@ fun StockScreenContent(
     onNavigateUp: () -> Unit,
     stockItems: List<Stock>,
     masterIngredients: List<Ingredient>,
-    onAddStockItem: (ingredientId: Int, amount: Int) -> Unit,
     onUpdateStockItem: (Stock) -> Unit,
     onRemoveStockItem: (Stock) -> Unit,
+    onClearStock: () -> Unit,
     ingredientListVm: IngredientListViewModel
 ) {
-    var showAddDialog by remember { mutableStateOf(false) }
     var editingItem by remember { mutableStateOf<Stock?>(null) }
 
     Scaffold(
-        topBar = { AppTopBar(title = "Stock", onNavigateUp = onNavigateUp) },// Task 3: floatingActionButton block REMOVED
+        topBar = { AppTopBar(title = "Stock", onNavigateUp = onNavigateUp) },
         containerColor = Color(0xFF2C2C2C)
     ) { paddingValues ->
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(horizontal = 16.dp)
         ) {
-            // --- ADDED COLUMN TITLES ---
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 10.dp, bottom = 4.dp), // Adjust padding to match layout
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "Ingredient Name",
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1.5f),
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                    Text(
-                        text = "Amount",
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(0.5f),
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                    // Spacer to account for the Edit/Delete button width in rows below
-                    Spacer(modifier = Modifier.width(96.dp))
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 10.dp, bottom = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Ingredient Name",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1.5f),
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                        Text(
+                            text = "Amount",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(0.5f),
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                        Spacer(modifier = Modifier.width(96.dp))
+                    }
+                }
+
+                items(stockItems, key = { it.IngredientID }) { item ->
+                    val ingredient = masterIngredients.find { it.ID == item.IngredientID }
+                    if (ingredient != null) {
+                        StockItemRow(
+                            ingredient = ingredient,
+                            stock = item,
+                            onEdit = { editingItem = item },
+                            onDelete = { onRemoveStockItem(item) }
+                        )
+                    }
                 }
             }
 
-            items(stockItems, key = { it.IngredientID }) { item ->
-                val ingredient = masterIngredients.find { it.ID == item.IngredientID }
-                if (ingredient != null) {
-                    StockItemRow(
-                        ingredient = ingredient,
-                        stock = item,
-                        onEdit = { editingItem = item },
-                        onDelete = { onRemoveStockItem(item) }
-                    )
-                }
+            // MODIFICATION: Logic for the Clear Stock Button
+            Button(
+                onClick = onClearStock, // Now correctly linked
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text("Clear All Stock", fontWeight = FontWeight.Bold)
             }
         }
     }
-
-//    if (showAddDialog) {
-//        IngredientDialog(
-//            ingredientListVm = ingredientListVm,
-//            onDismiss = { showAddDialog = false },
-//            onSave = { name, amount, unit ->
-//                val ingredient = masterIngredients.find { it.Name == name && it.Unit == unit }
-//                if (ingredient != null) {
-//                    onAddStockItem(ingredient.ID, amount.toIntOrNull() ?: 0)
-//                }
-//                showAddDialog = false
-//            }
-//        )
-//    }
 
     editingItem?.let { itemToEdit ->
         val ingredient = masterIngredients.find { it.ID == itemToEdit.IngredientID }
@@ -147,7 +145,6 @@ fun StockScreenContent(
                 isMasterIngredient = false,
                 onDismiss = { editingItem = null },
                 onSave = { _, amount, _ ->
-                    println("DEBUG: Amount is $amount")
                     onUpdateStockItem(itemToEdit.copy(Amount = amount.toIntOrNull() ?: 0))
                     editingItem = null
                 }
@@ -155,6 +152,7 @@ fun StockScreenContent(
         }
     }
 }
+
 @Composable
 fun StockItemRow(ingredient: Ingredient, stock: Stock, onEdit: () -> Unit, onDelete: () -> Unit) {
     Row(

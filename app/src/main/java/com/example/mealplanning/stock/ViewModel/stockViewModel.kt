@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.mealplanning.shoppingList.data.ShoppingCart
 import com.example.mealplanning.stock.data.Stock
 import com.example.mealplanning.stock.data.StockDao
+import com.example.mealplanning.weeklyMealPlan.data.MealPlanDetail
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -55,7 +56,11 @@ class StockViewModel(private val stockDao: StockDao) : ViewModel() {
         }
     }
 
-
+    fun clearStock() {
+        viewModelScope.launch {
+            stockDao.clearAllStock()
+        }
+    }
 
     fun updateStockFromShoppingList(cartItems: List<ShoppingCart>) {
         viewModelScope.launch {
@@ -75,6 +80,18 @@ class StockViewModel(private val stockDao: StockDao) : ViewModel() {
                             Amount = cartItem.Amount
                         )
                     )
+                }
+            }
+        }
+    }
+
+    fun consumeIngredients(ingredients: List<MealPlanDetail>) {
+        viewModelScope.launch {
+            ingredients.forEach { detail ->
+                val existingStock = stockDao.getStockById(detail.IngredientID)
+                if (existingStock != null) {
+                    val newAmount = (existingStock.Amount - detail.Amount).coerceAtLeast(0)
+                    stockDao.update(existingStock.copy(Amount = newAmount))
                 }
             }
         }

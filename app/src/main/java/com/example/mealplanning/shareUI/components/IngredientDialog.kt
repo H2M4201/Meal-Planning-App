@@ -10,6 +10,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -161,10 +163,24 @@ fun IngredientSearchDialog(
     onDismiss: () -> Unit,
     onIngredientSelected: (Ingredient) -> Unit
 ) {
+    var searchQuery by remember { mutableStateOf("") }
     val masterIngredients by ingredientListVm.masterIngredients.collectAsState()
+
+    // Fuzzy filter: only show if query matches part of the name
+    val filteredIngredients = remember(searchQuery, masterIngredients) {
+        if (searchQuery.isBlank()) emptyList() // Don't show anything initially
+        else masterIngredients.filter { it.Name.contains(searchQuery, ignoreCase = true) }
+    }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(modifier = Modifier.heightIn(max = 500.dp)) {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                label = { Text("Type to search...") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
             LazyColumn(contentPadding = PaddingValues(16.dp)) {
                 items(masterIngredients) { ingredient ->
                     Row(
@@ -188,18 +204,7 @@ fun IngredientSearchDialog(
                             )
                         }
 
-//                        Surface(
-//                            modifier = Modifier.width(75.dp),
-//                            shape = RoundedCornerShape(8.dp),
-//                            color = Color(0xFFF0703C)
-//                        ) {
-//                            Text(
-//                                text = ingredient.Unit,
-//                                modifier = Modifier.padding(8.dp),
-//                                color = Color.Black,
-//                                fontSize = 13.sp
-//                            )
-//                        }
+//
                     }
                 }
             }

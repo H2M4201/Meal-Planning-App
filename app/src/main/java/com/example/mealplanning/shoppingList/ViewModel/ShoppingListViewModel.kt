@@ -1,10 +1,13 @@
 package com.example.mealplanning.shoppingList.ViewModel
 
+import androidx.compose.animation.core.copy
+import androidx.compose.foundation.gestures.forEach
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.mealplanning.shoppingList.data.ShoppingCart
 import com.example.mealplanning.shoppingList.data.ShoppingCartDao
+import com.example.mealplanning.stock.data.Stock
 import com.example.mealplanning.weeklyMealPlan.data.IngredientSummary
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -75,6 +78,25 @@ class ShoppingListViewModel(private val shoppingCartDao: ShoppingCartDao) : View
             currentCartItems.forEach { (ingredientId, cartItem) ->
                 if (!requiredTotals.containsKey(ingredientId)) {
                     shoppingCartDao.delete(cartItem)
+                }
+            }
+        }
+    }
+
+    fun excludeCurrentStock(currentStock: List<Stock>, weekStartDate: LocalDate) {
+        viewModelScope.launch {
+            val stockMap = currentStock.associate { it.IngredientID to it.Amount }
+            val currentCart = shoppingCartDao.getCartForWeek(weekStartDate).first() // Assuming existing DAO method
+
+            currentCart.forEach { item ->
+                val availableStock = stockMap[item.IngredientID] ?: 0
+                if (availableStock > 0) {
+                    val newAmount = (item.Amount - availableStock).coerceAtLeast(0)
+                    if (newAmount == 0) {
+                        shoppingCartDao.delete(item)
+                    } else {
+                        shoppingCartDao.update(item.copy(Amount = newAmount))
+                    }
                 }
             }
         }

@@ -34,6 +34,7 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
 import com.example.mealplanning.recipe.ViewModel.RecipeViewModel // ADD THIS
+import com.example.mealplanning.stock.ViewModel.StockViewModel
 
 // This is the new data class that will represent a cell in our UI.
 // It holds the MealPlan from the DB and its associated details.
@@ -52,7 +53,8 @@ fun WeeklyMealPlanScreen(
     vm: MealPlanViewModel,
     shoppingListVm: ShoppingListViewModel,
     ingredientListVm: IngredientListViewModel,
-    recipeVm: RecipeViewModel
+    recipeVm: RecipeViewModel,
+    stockVm: StockViewModel
 ) {
     // --- STATE MANAGEMENT ---
     var startOfWeek by remember { mutableStateOf(LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.SATURDAY))) }
@@ -191,6 +193,7 @@ fun WeeklyMealPlanScreen(
                 }
                 showCookDialog = null
             },
+            stockVm = stockVm,
             onSetEatOut = {
                 val isNew = uiMeal.mealPlan == null
 

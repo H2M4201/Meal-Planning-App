@@ -41,6 +41,7 @@ import com.example.mealplanning.ingredientList.ViewModel.IngredientListViewModel
 import com.example.mealplanning.recipe.ViewModel.RecipeViewModel
 import com.example.mealplanning.recipe.data.Recipe
 import com.example.mealplanning.shareUI.components.IngredientDialog
+import com.example.mealplanning.stock.ViewModel.StockViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.format.DateTimeFormatter
@@ -51,6 +52,7 @@ fun CookDialog(
     meal: UIMeal, // Use the UIMeal wrapper class
     ingredientListVm: IngredientListViewModel,
     recipeVm: RecipeViewModel,
+    stockVm: StockViewModel,
     onDismiss: () -> Unit,
     // MODIFICATION: onSave now returns the MealPlan and its details
     onSave: (mealPlan: MealPlan, details: List<MealPlanDetail>) -> Unit,
@@ -69,6 +71,8 @@ fun CookDialog(
      var editingDetail by remember { mutableStateOf<MealPlanDetail?>(null) }
      val dateFormatter = DateTimeFormatter.ofPattern("MMM dd")
     var showRecipeSearchDialog by remember { mutableStateOf(false) } // MODIFICATION: New state
+    var showConsumeDialog by remember { mutableStateOf(false) }
+    var showPartialConsumeDialog by remember { mutableStateOf(false) } // NEW STATE
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -161,6 +165,13 @@ fun CookDialog(
                         }
                     }) { Text("Save") }
                     Button(onClick = onSetEatOut) { Text("Eat Out") }
+                    Button(
+                        onClick = { showConsumeDialog = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF0703C))
+                    ) {
+                        Text("Consume")
+                    }
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -254,6 +265,36 @@ fun CookDialog(
                     }
                 }
                 showRecipeSearchDialog = false
+            }
+        )
+    }
+
+    if (showConsumeDialog) {
+        ConsumeFoodDialog(
+            meal = meal,
+            onDismiss = { showConsumeDialog = false },
+            onConfirm = { choice ->
+                showConsumeDialog = false
+                if (choice == ConsumeChoice.ALL) {
+                    stockVm.consumeIngredients(recipeIngredients.toList())
+                } else {
+                    showPartialConsumeDialog = true // Open the next step
+                }
+            }
+        )
+    }
+
+    if (showPartialConsumeDialog) {
+        ChooseConsumeAmountDialog(
+            recipeIngredients = recipeIngredients.toList(),
+            masterIngredients = masterIngredients,
+            ingredientListVm = ingredientListVm, // PASS IT HERE
+            onDismiss = { showPartialConsumeDialog = false },
+            onConfirm = { selectedIngredients ->
+                // For now, consuming selected items.
+                // You can add amount-picking logic to the dialog later.
+                stockVm.consumeIngredients(selectedIngredients)
+                showPartialConsumeDialog = false
             }
         )
     }

@@ -7,6 +7,7 @@ import com.example.mealplanning.ingredientList.ViewModel.IngredientListViewModel
 import com.example.mealplanning.recipe.ViewModel.RecipeViewModel
 import com.example.mealplanning.shoppingList.ViewModel.ShoppingListViewModel
 import com.example.mealplanning.shareUI.theme.MealPlanningTheme
+import com.example.mealplanning.stock.ViewModel.StockViewModel
 import com.example.mealplanning.weeklyMealPlan.ViewModel.MealPlanViewModel
 import com.example.mealplanning.weeklyMealPlan.components.WeeklyMealPlanScreen
 
@@ -19,14 +20,16 @@ fun WeeklyMealPlanEntry(
     vm: MealPlanViewModel,
     shoppingListVm: ShoppingListViewModel,
     ingredientListVm: IngredientListViewModel,
-    recipeVm: RecipeViewModel
+    recipeVm: RecipeViewModel,
+    stockVm: StockViewModel
 ) {
     WeeklyMealPlanScreen(
         onNavigateUp = onNavigateUp,
         vm = vm,
         shoppingListVm = shoppingListVm,
         ingredientListVm = ingredientListVm,
-        recipeVm =  recipeVm
+        recipeVm =  recipeVm,
+        stockVm = stockVm
     )
 }
 
@@ -41,7 +44,8 @@ fun WeeklyMealPlanScreenPreview() {
             vm = viewModel(), // This will be an empty VM for preview
             shoppingListVm = viewModel(),
             ingredientListVm = viewModel(),
-            recipeVm = viewModel()
+            recipeVm = viewModel(),
+            stockVm = viewModel()
         )
     }
 }
